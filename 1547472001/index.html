@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"blog.voiddog.org","root":"/","scheme":"Pisces","version":"8.0.0-rc.5","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false};
+  </script>
+
+  <meta name="description" content="前景概括Flutter 是一个跨平台开发的工具，它极速的开发方式、Native 的表现性能、开源的代码等特点吸引了业界众多开发者的注意。不过由于 Flutter 处于萌芽发展阶段，还不是很完善，比如本文需要探讨的混合栈实现就是 Flutter 其中的一块短板，目前没有一套官方的解决方案，都是业界开发者在试水 这里简单介绍下 Flutter 的混合栈问题：Flutter 的界面是需要 Native">
+<meta property="og:type" content="article">
+<meta property="og:title" content="一种无入侵的Flutter混合栈方案">
+<meta property="og:url" content="http://blog.voiddog.org/1547472001/index.html">
+<meta property="og:site_name" content="爆裂吧现实">
+<meta property="og:description" content="前景概括Flutter 是一个跨平台开发的工具，它极速的开发方式、Native 的表现性能、开源的代码等特点吸引了业界众多开发者的注意。不过由于 Flutter 处于萌芽发展阶段，还不是很完善，比如本文需要探讨的混合栈实现就是 Flutter 其中的一块短板，目前没有一套官方的解决方案，都是业界开发者在试水 这里简单介绍下 Flutter 的混合栈问题：Flutter 的界面是需要 Native">
+<meta property="og:locale">
+<meta property="og:image" content="https://i.imgur.com/QuJ8gta.png">
+<meta property="article:published_time" content="2019-04-10T17:06:30.000Z">
+<meta property="article:modified_time" content="2020-11-02T10:15:43.957Z">
+<meta property="article:author" content="VoidDog">
+<meta property="article:tag" content="Android">
+<meta property="article:tag" content="Flutter">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/QuJ8gta.png">
+
+
+<link rel="canonical" href="http://blog.voiddog.org/1547472001/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>一种无入侵的Flutter混合栈方案 | 爆裂吧现实</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175543622-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-175543622-1');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">爆裂吧现实</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">不想死就早点睡</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E6%99%AF%E6%A6%82%E6%8B%AC"><span class="nav-number">1.</span> <span class="nav-text">前景概括</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E3%80%81Flutter-Hero-%E5%8A%A8%E7%94%BB%E5%A4%B1%E6%95%88"><span class="nav-number">1.1.</span> <span class="nav-text">一、Flutter Hero 动画失效</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E5%A6%82%E4%BD%95%E8%AE%A9%E5%8E%9F%E7%94%9F%E7%9A%84-Navigator-%E5%85%B7%E6%9C%89%E6%B7%B7%E5%90%88%E6%A0%88%E8%83%BD%E5%8A%9B"><span class="nav-number">1.2.</span> <span class="nav-text">二、如何让原生的 Navigator 具有混合栈能力</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#dart-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="nav-number">2.</span> <span class="nav-text">dart 实现原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%9A%E7%95%8C%E6%96%B9%E6%A1%88%E6%AF%94%E8%BE%83"><span class="nav-number">3.</span> <span class="nav-text">业界方案比较</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%80%E5%8F%91%E5%90%8E%E8%AE%B0"><span class="nav-number">4.</span> <span class="nav-text">开发后记</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1%E3%80%81iOS-%E7%9A%84%E4%BE%A7%E6%BB%91%E8%BF%94%E5%9B%9E%E9%97%AE%E9%A2%98"><span class="nav-number">4.1.</span> <span class="nav-text">1、iOS 的侧滑返回问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2%E3%80%81Flutter-%E5%9B%9E%E9%80%80%E7%9A%84%E6%97%B6%E5%80%99%E4%BC%9A%E9%97%AA%E4%B8%80%E4%B8%8B%E4%B8%8A%E4%B8%80%E4%B8%AA%E9%A1%B5%E9%9D%A2"><span class="nav-number">4.2.</span> <span class="nav-text">2、Flutter 回退的时候会闪一下上一个页面</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3%E3%80%81%E9%A1%B5%E9%9D%A2%E6%95%B0%E6%8D%AE%E4%BC%A0%E9%80%92%E9%80%82%E9%85%8D"><span class="nav-number">4.3.</span> <span class="nav-text">3、页面数据传递适配</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4%E3%80%81%E5%85%B6%E5%AE%83"><span class="nav-number">4.4.</span> <span class="nav-text">4、其它</span></a></li></ol></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="VoidDog"
+      src="https://i.imgur.com/rO7BKq2.png">
+  <p class="site-author-name" itemprop="name">VoidDog</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/voiddog" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/qgx446738721" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;qgx446738721" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.facebook.com/voiddog" title="Facebook → https:&#x2F;&#x2F;www.facebook.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-facebook fa-fw"></i>Facebook</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/voiddog" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-instagram fa-fw"></i>Instagram</a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://blog.voiddog.org/1547472001/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://i.imgur.com/rO7BKq2.png">
+      <meta itemprop="name" content="VoidDog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爆裂吧现实">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          一种无入侵的Flutter混合栈方案
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2019-04-10 17:06:30" itemprop="dateCreated datePublished" datetime="2019-04-10T17:06:30+00:00">2019-04-10</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-11-02 10:15:43" itemprop="dateModified" datetime="2020-11-02T10:15:43+00:00">2020-11-02</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Android/" itemprop="url" rel="index"><span itemprop="name">Android</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Android/Flutter/" itemprop="url" rel="index"><span itemprop="name">Flutter</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <h2 id="前景概括"><a href="#前景概括" class="headerlink" title="前景概括"></a>前景概括</h2><p><a target="_blank" rel="noopener" href="https://flutter.dev/">Flutter</a> 是一个跨平台开发的工具，它极速的开发方式、Native 的表现性能、开源的代码等特点吸引了业界众多开发者的注意。不过由于 Flutter 处于萌芽发展阶段，还不是很完善，比如本文需要探讨的混合栈实现就是 Flutter 其中的一块短板，目前没有一套官方的解决方案，都是业界开发者在试水</p>
+<p>这里简单介绍下 Flutter 的混合栈问题：Flutter 的界面是需要 Native 的容器来承载显示的，比如 Android 里面的 Activity，iOS 里面的 ViewController。现有的 app 不可能全部改成 flutter 实现，所以需要将 flutter 接入现有的 app 中，如果此时从 Native 页面跳转到 Flutter 页面，默认的方式会重新初始化一个 Flutter 实例运行，不会复用之前创建的 Flutter 实例</p>
+<blockquote>
+<p>具体细节在之前的一篇混合栈文章 <a target="_blank" rel="noopener" href="https://voiddog.github.io/1547471101/">Flutter混合栈管理</a> 里面讲述了</p>
+</blockquote>
+<p>我之前开发过一个混合栈插件来解决 flutter 的混合开发问题，最后在使用的时候会碰到以下问题：</p>
+<ul>
+<li>Flutter 的共享动画会失效 (Hero 动画)</li>
+<li>必须使用混合栈的 api 来打开跳转页面，无法使用系统的 <code>Navigator</code></li>
+</ul>
+<p>为了解决上述问题，需要重新设计 Flutter 混合栈插件，下面来探讨下怎么解决上述两个问题</p>
+<a id="more"></a>
+
+<h3 id="一、Flutter-Hero-动画失效"><a href="#一、Flutter-Hero-动画失效" class="headerlink" title="一、Flutter Hero 动画失效"></a>一、Flutter Hero 动画失效</h3><p>在之前的混合栈实现方式里面，FlutterA 页面跳转到 FlutterB 页面，是通过一个新的 Native 容器来实现跳转的，因为这个原因导致无法使用 Hero 动画（Flutter 是渲染在 Native 容器内的，无法在容器外绘制）</p>
+<p>这里如果还是需要借助 native 容器（比如 android 的 Activity）来实现跳转，感觉很难实现。换一个思路，难道一定要借助 native 容器来跳转吗？不可以直接使用 flutter 原生的方式来跳转吗？如果在 Flutter -&gt; Flutter 跳转的时候使用 flutter 原生的跳转，这个问题不就不存在了吗？</p>
+<p>我觉得对于这个最大的影响点只有页面跳转动画不一致问题了，其它的页面埋点信息之类的都可以在 flutter 层解决。</p>
+<p>Flutter 的页面跳转有自己的动画，Native 有 Native 的转场动画，这个问题在 Android 上可能严重些，Android 因为系统 rom 定制问题，不同 rom 的默认跳转动画可能不一致。解决方案是 app 不能使用系统默认动画，需要用自定义动画，然后把动画在 flutter 端实现一份！iOS 就没有问题，因为系统本身转场动画比较统一，便于适配。</p>
+<p>我比较推荐在 flutter 跳转到 flutter 的时候走 flutter 原生的跳转，不经过 native 容器跳转，这样可以有以下好处：</p>
+<ul>
+<li>完全走 flutter 生命周期流程，和 native 没有关系</li>
+<li>转场的时候不再需要截图和混合栈适配</li>
+<li>可以放心安全的使用 Hero 动画</li>
+</ul>
+<p>从长远的角度看，此方案兼容性比较好，适配简单，便于后续升级</p>
+<blockquote>
+<p>脱离 native 的统一跳转，URLRoute 方案和页面埋点方案都需要重新定制。这一点需要考虑</p>
+</blockquote>
+<h3 id="二、如何让原生的-Navigator-具有混合栈能力"><a href="#二、如何让原生的-Navigator-具有混合栈能力" class="headerlink" title="二、如何让原生的 Navigator 具有混合栈能力"></a>二、如何让原生的 <code>Navigator</code> 具有混合栈能力</h3><p>这部分我一开始并没有什么好的解决方案，直到闲鱼出了 <a target="_blank" rel="noopener" href="https://github.com/alibaba/flutter_boost">flutter_boost</a>，看了下里面的实现逻辑，发现它的多 <code>Navigator</code> 方案很不错！我们来看下怎么用多 <code>Navigator</code> 方案来实现混合栈能力</p>
+<p>通常情况下我们使用 <code>Navigator</code> 来跳转页面是这样的：<code>Navigator.of(context).push(...)</code>，这个 of 就是获取到距离当前 context 最近的一个 <code>Navigator</code>，内部的代码如下：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">final</span> NavigatorState navigator = rootNavigator</span><br><span class="line">  ? context.rootAncestorStateOfType(<span class="keyword">const</span> TypeMatcher&lt;NavigatorState&gt;())</span><br><span class="line">  : context.ancestorStateOfType(<span class="keyword">const</span> TypeMatcher&lt;NavigatorState&gt;());</span><br></pre></td></tr></table></figure>
+<p><code>context.ancestorStateOfType()</code> 是在 widget 树中从当前 context 开始自底向上搜索，除非使用 <code>context.rootAncestorStateOfType()</code>，否则获取到的就是最近的祖先节点</p>
+<div class="note warning"><p>showDialog 使用的是 <code>context.rootAncestorStateOfType()</code> 也就是获取的是 root Navigator，这里需要注意</p>
+</div>
+
+<p>有了上述思路，只要我继承 <code>Navigator</code>，复写掉 <code>push</code>、<code>pushNamed</code>… 等方法，让它具有混合栈能力，让后插入到所有页面节点之前，那么页面中使用的 <code>Navigator</code> 不就是有混合栈能力的 <code>Navigator</code> 吗？</p>
+<p>看似思路很简单，但是写起来还是需要熟悉 Flutter 中 <code>Navigator</code> 的工作流程的，基于这个流程想办法插入自己的逻辑，并且做到让业务方无感知</p>
+<h2 id="dart-实现原理"><a href="#dart-实现原理" class="headerlink" title="dart 实现原理"></a>dart 实现原理</h2><p>经过上述思考后，我大致得到了解决方案，为了兼容起见我保留了两种 (Flutter -&gt; Flutter) 的跳转方式：</p>
+<ul>
+<li>借助 Native 容器来实现跳转</li>
+<li>直接使用 Flutter 原生的页面跳转</li>
+</ul>
+<p>然后通过继承 <code>class HybridNavigator extends Navigator</code>，重写掉里面的 <code>push</code>，<code>pop</code>…等方法，插入到整棵 Widget 树中：</p>
+<p><img src="https://i.imgur.com/QuJ8gta.png"></p>
+<p>如图中所示，整棵 Widget 树存在多个 <code>Navigator</code>，此时如果在 <code>Page X</code> 中通过 <code>context</code> 获取的 <code>Navigator</code> 其实是 <code>HybridNavigator</code>。这种情况下 Flutter 端打开一个新的页面分为两种情况</p>
+<p><strong>情况一：</strong><br>不走 native channel 的流程，直接 push 一个新的页面，对应图中 <code>Page A</code> -&gt; <code>Page B</code></p>
+<p><strong>情况二：</strong><br>走 native channel 流程，通过打开一个新的 native 容器来承载页面，对应图中粗的虚线（<code>Page B</code> -&gt; <code>Page C</code>）</p>
+<div class="note warning"><p>这种实现方式虽然可以做到对业务方透明，但是还是可能会影响一些 api 的使用，比如 <code>popUntil</code> 方法，因为是使用多 <code>Navigator</code> 方案，所以业务方获取到的 <code>Navigator</code> 栈中并不包含所有的页面，不过 <code>popUntil</code> 用的比较少（目前我还没有用到的地方），注意下就行</p>
+</div>
+
+<h2 id="业界方案比较"><a href="#业界方案比较" class="headerlink" title="业界方案比较"></a>业界方案比较</h2><ul>
+<li>闲鱼的 <code>flutter_boost</code>：闲鱼的混合栈给了我很多启发，优点：进过多场景的磨练测试，支持 native 容器平级。缺点：入侵性太强，打开页面返回的数据是回调方式，android 还是使用截图方案</li>
+<li>今日头条的混合栈方案：优点：理论上可以实现卡片级别的混合开发，不需要截图方案。缺点：需要修改引擎代码，后续升级推广比较麻烦</li>
+<li>本混合栈方案：优点：接入时无需修改页面内的跳转代码，数据通信接口和原生的一模一样（await 方式等待页面返回数据），android 不需要截图。缺点：暂未实现 native 容器的平级切换显示</li>
+</ul>
+<h2 id="开发后记"><a href="#开发后记" class="headerlink" title="开发后记"></a>开发后记</h2><p>目前混合栈 flutter plugin 已经开发完成接入上线，这次升级原有的混合栈主要是减少 flutter 业务代码的入侵程度（可以直接使用系统 api，对于业务方开发来说是透明的），实际开发过程中还是会碰到很多问题，比如下面几项：</p>
+<h3 id="1、iOS-的侧滑返回问题"><a href="#1、iOS-的侧滑返回问题" class="headerlink" title="1、iOS 的侧滑返回问题"></a>1、iOS 的侧滑返回问题</h3><p>在之前的混合栈方案中，只需要禁用 Flutter Page 的侧滑返回，启用 NativeController 的侧滑返回即可。现在引入了一个 Native 容器可以打开多个 Flutter Page，所以不能这么简单暴力的干了</p>
+<p>解决办法是禁用 <code>HybridNavigator</code> 栈中栈底 Route 的侧滑返回，监听当前 <code>HybridNavigator</code> 的页面栈，如果页面数量 &gt; 1，则禁用 native controller 的侧滑返回，否则启用 native controller 的侧滑返回</p>
+<h3 id="2、Flutter-回退的时候会闪一下上一个页面"><a href="#2、Flutter-回退的时候会闪一下上一个页面" class="headerlink" title="2、Flutter 回退的时候会闪一下上一个页面"></a>2、Flutter 回退的时候会闪一下上一个页面</h3><p>当 <code>HybridNavigator</code> 栈只剩一个页面的时候，此时如果再回退会结束掉 native 容器（操作 ①），并且把当前的 <code>HybridNavigator</code> 从系统根 <code>Navigator</code> 中移除（操作 ②）。问题是结束 native 容器是通过 channel 调用的，属于异步调用，无法保证上述两个操作的顺序。</p>
+<p>如果（操作 ②）出现在（操作 ①）之前，那么就会出现当前 native 容器显示了上一个 native 容器的页面</p>
+<p>这里的解决办法是把（操作 ②）交给 channel 来执行，这时候需要 <code>HybridNavigator</code> 继承下 <code>pop</code> 方法，代码如下：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@override</span></span><br><span class="line"><span class="built_in">bool</span> pop&lt;T <span class="keyword">extends</span> <span class="built_in">Object</span>&gt;([T result]) &#123;</span><br><span class="line">  <span class="keyword">if</span> (canPop()) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">super</span>.pop(result);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// pop 函数本来是非异步的，但是这里因为是当前 Navigator 最后一个页面了，所以可以放心</span></span><br><span class="line">  <span class="comment">// 使用 channel 关闭页面</span></span><br><span class="line">  HybridStackManager.singleton</span><br><span class="line">      .closeKeyPage(widget.nativePageId, result, _initialRoute);</span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>难点是在 <code>pop</code> 方法是有返回值的，而且是一个非异步方法，channel 是异步。这里我直接暴力返回了 true，有可能导致 <code>popUntil</code> 死循环，这部分未解决</p>
+<blockquote>
+<p>打开页面的时候也是有可能出现当前页面显示了上一个页面的问题，这部分需要在 native 容器内处理</p>
+</blockquote>
+<h3 id="3、页面数据传递适配"><a href="#3、页面数据传递适配" class="headerlink" title="3、页面数据传递适配"></a>3、页面数据传递适配</h3><p><code>v1.0.0</code> 引擎上，系统的 <code>Navigator.of(context).pushNamed()</code> 是不能带参数的，但是 <code>v1.2.2</code> 后官方给这个 <code>pushNamed</code> 接口扩展了下，可以带上页面参数了。不过 <code>v1.2.2</code> 版本中 android 的 java 代码存在资源释放 bug，无法适配混合栈。最后我选择了 beta 分支上的 <code>v1.3.8</code> 来开发</p>
+<h3 id="4、其它"><a href="#4、其它" class="headerlink" title="4、其它"></a>4、其它</h3><p>其它还有一些琐碎的小问题（比如页面生命周期 dispose 缺失，android 沉浸式适配问题…等等），这里不给予展开了，各位有兴趣的可以阅读源码</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Android/" rel="tag"># Android</a>
+              <a href="/tags/Flutter/" rel="tag"># Flutter</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/1547471101/" rel="prev" title="Flutter混合栈管理">
+                  <i class="fa fa-chevron-left"></i> Flutter混合栈管理
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/1597571250707/" rel="next" title="Flutter 手势事件解析（一）">
+                  Flutter 手势事件解析（一） <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">VoidDog</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"blog.voiddog.org","root":"/","scheme":"Pisces","version":"8.0.0-rc.5","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false};
+  </script>
+
+  <meta name="description" content="Android 的插件化开发，这个坑非常深，其中有一个问题就是 bundle 和 host 的版本不一致性问题，如果 bundle 中 sdk 的版本和 host 中 sdk 版本不一致，就很有可能出现 api 兼容性问题，导致运行时 crash。 一开始会想：”让 host 和 bundle 中的版本号抽离成一个文件不就行了？“ 答案肯定是不行，因为这样只能让直接依赖的版本一致，不能让传递依赖的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="插件化的版本一致性问题">
+<meta property="og:url" content="http://blog.voiddog.org/1547471796/index.html">
+<meta property="og:site_name" content="爆裂吧现实">
+<meta property="og:description" content="Android 的插件化开发，这个坑非常深，其中有一个问题就是 bundle 和 host 的版本不一致性问题，如果 bundle 中 sdk 的版本和 host 中 sdk 版本不一致，就很有可能出现 api 兼容性问题，导致运行时 crash。 一开始会想：”让 host 和 bundle 中的版本号抽离成一个文件不就行了？“ 答案肯定是不行，因为这样只能让直接依赖的版本一致，不能让传递依赖的">
+<meta property="og:locale">
+<meta property="og:image" content="https://i.imgur.com/KALEWy3.jpg">
+<meta property="og:image" content="https://i.imgur.com/LKQIs9U.jpg">
+<meta property="og:image" content="https://i.imgur.com/l6dewXn.jpg">
+<meta property="article:published_time" content="2019-01-14T13:02:50.000Z">
+<meta property="article:modified_time" content="2020-11-02T10:15:43.957Z">
+<meta property="article:author" content="VoidDog">
+<meta property="article:tag" content="Android">
+<meta property="article:tag" content="插件化">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/KALEWy3.jpg">
+
+
+<link rel="canonical" href="http://blog.voiddog.org/1547471796/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>插件化的版本一致性问题 | 爆裂吧现实</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175543622-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-175543622-1');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">爆裂吧现实</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">不想死就早点睡</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-overview-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="VoidDog"
+      src="https://i.imgur.com/rO7BKq2.png">
+  <p class="site-author-name" itemprop="name">VoidDog</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/voiddog" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/qgx446738721" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;qgx446738721" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.facebook.com/voiddog" title="Facebook → https:&#x2F;&#x2F;www.facebook.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-facebook fa-fw"></i>Facebook</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/voiddog" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-instagram fa-fw"></i>Instagram</a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://blog.voiddog.org/1547471796/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://i.imgur.com/rO7BKq2.png">
+      <meta itemprop="name" content="VoidDog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爆裂吧现实">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          插件化的版本一致性问题
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2019-01-14 13:02:50" itemprop="dateCreated datePublished" datetime="2019-01-14T13:02:50+00:00">2019-01-14</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-11-02 10:15:43" itemprop="dateModified" datetime="2020-11-02T10:15:43+00:00">2020-11-02</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Android/" itemprop="url" rel="index"><span itemprop="name">Android</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>Android 的插件化开发，这个坑非常深，其中有一个问题就是 bundle 和 host 的版本不一致性问题，如果 bundle 中 sdk 的版本和 host 中 sdk 版本不一致，就很有可能出现 api 兼容性问题，导致运行时 crash。</p>
+<p>一开始会想：”<em>让 host 和 bundle 中的版本号抽离成一个文件不就行了？</em>“</p>
+<p>答案肯定是不行，因为这样只能让直接依赖的版本一致，不能让传递依赖的版本一致化</p>
+<a id="more"></a>
+
+<hr>
+<p>具体为什么不行，举几个例子：</p>
+<p><strong>情况一：</strong><br><img src="https://i.imgur.com/KALEWy3.jpg"></p>
+<p>如上图所示，host 在 <code>resolve dependencies</code> 之后，依赖的 C 库版本为 <code>1.1</code>，而 bundle 因为没有直接依赖 C 库，所以 <code>resolve dependencies</code> 之后 C 库的版本是 <code>1.0</code></p>
+<p>这里就存在一个版本不一致的问题了，此时如果 bundle 中使用了一个 C 库不向下兼容的 api，运行时就会跪</p>
+<blockquote>
+<p>bundle 是 provide 引入 C 库，最后打包后 C 库的实现代码在 host 中</p>
+</blockquote>
+<p>对于上述问题，有个简单的解决方案就是禁用 bundle 的传递依赖功能：<br><img src="https://i.imgur.com/LKQIs9U.jpg"></p>
+<blockquote>
+<p>只要 bundle 没有传递依赖，所有版本都手动指定，这样可以避免版本号不一致的问题</p>
+</blockquote>
+<p>缺点：</p>
+<ol>
+<li>人工前期的工作量较大，因为 bundle 阻断了传递依赖，如果需要用到非顶级依赖的库，需要手动引入</li>
+<li>bundle 中直接依赖的库必须在 host 中也写一份直接依赖，并且加上 <code>force=true</code> 不然如果 A 库中的 C 库升级到了 1.2，但是 host 中的依赖没有升级（还是 1.1）。最终因为 host 有传递依赖，bundle 没有传递依赖，导致 host 中编译版本为 C:1.2，bundle 中为 C:1.1</li>
+</ol>
+<p><strong>情况二：</strong><br><img src="https://i.imgur.com/l6dewXn.jpg"></p>
+<p>情况二中 host 和 bundle 没有直接依赖 C 库，是传递依赖进来的，host 因为依赖了 B 库，导致 <code>resolve dependencies</code> 之后 C 库的版本为 <code>1.1</code>，而 bundle 还是 <code>1.0</code></p>
+<hr>
+<p>版本不一致问题直接导致了开发者必须去关心自己插件的依赖，会大幅降低开发效率，问题的根源很简单：<strong>bundle 中依赖的 version 和 host 不一致产生的</strong>，那么只要让 bundle 中依赖的 version 和 host 中依赖的 version 一致不就可以了</p>
+<p>解决方案原理很简单：<strong>让 bundle 获取 host 的依赖树，并根据 host 的依赖树更新自己的依赖树</strong></p>
+<blockquote>
+<p>其实就是相当于单 application 时候的依赖自动升级（存在多版本的时候会自动选取最高的版本），只不过把依赖版本的检测范围扩大到了别的 module 中</p>
+</blockquote>
+<p>知道原理后，接下来就是编写 gradle 插件，插件需要完成以下功能：</p>
+<ul>
+<li>插件的版本号修改：<code>configurations</code> 可以修改 <code>dependencies</code> 的版本号</li>
+<li>保证 bundle <code>resolve dependencies</code> 的时候，host 的依赖树已分析完毕</li>
+</ul>
+<p>翻了几天的官方文档，找到了以下解决方案：</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 此方法为阻塞方法，保证当前 project 之后的代码运行在 host 工程构建脚本执行完之后</span></span><br><span class="line">evaluationDependsOn(<span class="string">&quot;:app&quot;</span>)</span><br><span class="line"><span class="keyword">def</span> appProject = project(<span class="string">&quot;:app&quot;</span>)</span><br><span class="line"><span class="keyword">def</span> configMap = [:]</span><br><span class="line"><span class="keyword">def</span> moduleName = projects.project.name</span><br><span class="line"></span><br><span class="line"><span class="comment">// 辅助方法，处理 configuration name 映射</span></span><br><span class="line"><span class="comment">// 因为 bundle 中的 configuration name 大多数为 provided</span></span><br><span class="line"><span class="keyword">def</span> processConfigurationName(String name) &#123;</span><br><span class="line">    <span class="keyword">if</span> (name == <span class="literal">null</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> name</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (name.startsWith(<span class="string">&quot;provided&quot;</span>)) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;compile&quot;</span></span><br><span class="line">    &#125;</span><br><span class="line">    name = name.toLowerCase()</span><br><span class="line">    name = name.replace(<span class="string">&quot;implementation&quot;</span>, <span class="string">&quot;compile&quot;</span>)</span><br><span class="line">    name = name.replace(<span class="string">&quot;api&quot;</span>, <span class="string">&quot;compile&quot;</span>)</span><br><span class="line">    name = name.replace(<span class="string">&quot;compileonly&quot;</span>, <span class="string">&quot;compile&quot;</span>)</span><br><span class="line">    name = name.replace(<span class="string">&quot;runtimeonly&quot;</span>, <span class="string">&quot;compile&quot;</span>)</span><br><span class="line">    <span class="keyword">return</span> name</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 辅助方法，递归获取最终的依赖  </span></span><br><span class="line"><span class="keyword">def</span> dfsGetDependencies(ResolvedDependency dependency, Map&lt;String, String&gt; versionMap) &#123;</span><br><span class="line">    <span class="keyword">def</span> groupName = <span class="string">&quot;$&#123;dependency.moduleGroup&#125;.$&#123;dependency.moduleName&#125;&quot;</span></span><br><span class="line">    <span class="keyword">def</span> version = dependency.moduleVersion</span><br><span class="line">    versionMap[groupName] = version</span><br><span class="line">    dependency.children.forEach &#123;</span><br><span class="line">        dfsGetDependencies(it, versionMap)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// host 依赖解析获取</span></span><br><span class="line">appProject.configurations.all &#123;</span><br><span class="line">    <span class="keyword">def</span> configurationName = processConfigurationName(it.name)</span><br><span class="line">    <span class="keyword">def</span> versionMap = configMap[configurationName]</span><br><span class="line">    <span class="keyword">if</span> (versionMap == <span class="literal">null</span>) &#123;</span><br><span class="line">        versionMap = [:]</span><br><span class="line">        configMap[configurationName] = versionMap</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 克隆一份 configuration，根据官方文档，克隆之后是 unResolve 的 </span></span><br><span class="line">    <span class="comment">// 这里必须克隆，否则会影响原先 host 的 resolve 过程 </span></span><br><span class="line">    <span class="keyword">def</span> ft = it.copyRecursive()</span><br><span class="line">    <span class="comment">// resolve 依赖，下载或者从缓存中解析依赖树，阻塞方法  </span></span><br><span class="line">    ft.setCanBeResolved(<span class="literal">true</span>)</span><br><span class="line">    <span class="comment">// 收集 host 中的依赖</span></span><br><span class="line">    ft.resolvedConfiguration.getFirstLevelModuleDependencies().forEach &#123;dfsGetDependencies(it, versionMap)&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 打印输出下日志</span></span><br><span class="line"><span class="keyword">def</span> dfsOutputUpdateDependencies(ResolvedDependency dependency, Map&lt;String, String&gt; versionMap, String moduleName, Set&lt;String&gt; updateSet) &#123;</span><br><span class="line">    <span class="keyword">def</span> groupName = <span class="string">&quot;$&#123;dependency.moduleGroup&#125;.$&#123;dependency.moduleName&#125;&quot;</span></span><br><span class="line">    <span class="keyword">def</span> version = dependency.moduleVersion</span><br><span class="line">    <span class="keyword">def</span> hostVersion = versionMap[groupName]</span><br><span class="line">    <span class="keyword">if</span> (hostVersion == <span class="literal">null</span> &amp;&amp; groupName != <span class="string">&quot;com.vdian.bundle.api.framework&quot;</span>) &#123;</span><br><span class="line">        <span class="comment">// host 缺少对应依赖的生命  </span></span><br><span class="line">        logger.error(<span class="string">&quot;宿主缺少 $moduleName 插件对应依赖:$&#123;groupName&#125;&quot;</span>)</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (hostVersion != <span class="literal">null</span> &amp;&amp; !updateSet.contains(groupName) &amp;&amp; hostVersion != version) &#123;</span><br><span class="line">        <span class="comment">// 根据宿主更新 bundle 中的依赖版本  </span></span><br><span class="line">        updateSet.add(groupName)</span><br><span class="line">        logger.warn(<span class="string">&quot;更新 $moduleName 插件依赖: $&#123;groupName&#125;:$&#123;version&#125; -&gt; $hostVersion&quot;</span>)</span><br><span class="line">    &#125;  </span><br><span class="line">    dependency.children.forEach &#123;</span><br><span class="line">        dfsOutputUpdateDependencies(it, versionMap, moduleName, updateSet)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 更新当前 bundle 的依赖</span></span><br><span class="line"><span class="keyword">def</span> updateSet = <span class="keyword">new</span> HashSet&lt;String&gt;()</span><br><span class="line">configurations.all &#123;</span><br><span class="line">    <span class="keyword">def</span> configurationName = processConfigurationName(it.name)</span><br><span class="line">    <span class="keyword">def</span> versionMap = configMap[configurationName]</span><br><span class="line">    <span class="keyword">if</span> (versionMap == <span class="literal">null</span>) &#123;</span><br><span class="line">        logger.error(<span class="string">&quot;宿主缺少 configuration: $&#123;configurationName&#125;&quot;</span>)</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">def</span> ft = it.copyRecursive()</span><br><span class="line">    ft.setCanBeResolved(<span class="literal">true</span>)</span><br><span class="line">    ft.resolvedConfiguration.getFirstLevelModuleDependencies().forEach &#123;</span><br><span class="line">        dfsOutputUpdateDependencies(it, versionMap, moduleName.toString(), updateSet)</span><br><span class="line">    &#125;</span><br><span class="line">    it.resolutionStrategy.eachDependency &#123;</span><br><span class="line">        <span class="keyword">def</span> groupName = <span class="string">&quot;$&#123;it.target.group&#125;.$&#123;it.target.name&#125;&quot;</span></span><br><span class="line">        <span class="keyword">def</span> hostVersion = versionMap[groupName]</span><br><span class="line">        <span class="keyword">if</span> (hostVersion != <span class="literal">null</span> &amp;&amp; hostVersion != it.target.version) &#123;</span><br><span class="line">            <span class="comment">// 根据宿主更新 bundle 中的依赖版本  </span></span><br><span class="line">            it.useVersion(hostVersion)</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后把上述代码写到一个 gradle 文件中，然后在插件的 build.gradle 里面 apply 它</p>
+<blockquote>
+<p>该代码为示意代码，不保证可以顺利运行，知道原理的应该可以快速写出来</p>
+</blockquote>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Android/" rel="tag"># Android</a>
+              <a href="/tags/%E6%8F%92%E4%BB%B6%E5%8C%96/" rel="tag"># 插件化</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/1547471100/" rel="prev" title="Flutter入门介绍">
+                  <i class="fa fa-chevron-left"></i> Flutter入门介绍
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/1547471101/" rel="next" title="Flutter混合栈管理">
+                  Flutter混合栈管理 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">VoidDog</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

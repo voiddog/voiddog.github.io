@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"blog.voiddog.org","root":"/","scheme":"Pisces","version":"8.0.0-rc.5","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false};
+  </script>
+
+  <meta name="description" content="用过 iOS 的都知道，拟物理的回弹效果在上面非常普遍，因为这是 iOS 系统支持的一套 UI 框架，但是 Android 就没有了，就拿图片查看器来讲，iOS 的效果就是感觉一张图片被绑定在了弹簧装置上，滑动很自然，Android 没有自带的图片查看器，需要自己实现 市面上主流的图片查看器都没有回弹的效果，一部分原因是没有这个需求，还有一部分是实现麻烦，这里讲述一个个人认为最好的方案 需求一个图">
+<meta property="og:type" content="article">
+<meta property="og:title" content="如何优雅地在Android上实现iOS的图片预览">
+<meta property="og:url" content="http://blog.voiddog.org/1547471396/index.html">
+<meta property="og:site_name" content="爆裂吧现实">
+<meta property="og:description" content="用过 iOS 的都知道，拟物理的回弹效果在上面非常普遍，因为这是 iOS 系统支持的一套 UI 框架，但是 Android 就没有了，就拿图片查看器来讲，iOS 的效果就是感觉一张图片被绑定在了弹簧装置上，滑动很自然，Android 没有自带的图片查看器，需要自己实现 市面上主流的图片查看器都没有回弹的效果，一部分原因是没有这个需求，还有一部分是实现麻烦，这里讲述一个个人认为最好的方案 需求一个图">
+<meta property="og:locale">
+<meta property="og:image" content="https://i.imgur.com/CMoVwdh.png">
+<meta property="og:image" content="https://i.imgur.com/N8CATcD.png">
+<meta property="og:image" content="https://i.imgur.com/1XWuNKM.png">
+<meta property="article:published_time" content="2017-01-19T00:37:06.000Z">
+<meta property="article:modified_time" content="2020-11-02T10:15:43.957Z">
+<meta property="article:author" content="VoidDog">
+<meta property="article:tag" content="Android">
+<meta property="article:tag" content="UI">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/CMoVwdh.png">
+
+
+<link rel="canonical" href="http://blog.voiddog.org/1547471396/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>如何优雅地在Android上实现iOS的图片预览 | 爆裂吧现实</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175543622-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-175543622-1');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">爆裂吧现实</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">不想死就早点睡</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%9C%80%E6%B1%82"><span class="nav-number">1.</span> <span class="nav-text">需求</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%86%E6%9E%90"><span class="nav-number">2.</span> <span class="nav-text">分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%B1%BB%E7%9A%84%E8%AE%BE%E8%AE%A1"><span class="nav-number">3.</span> <span class="nav-text">类的设计</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%A7%BB%E5%8A%A8%E7%9A%84%E5%A4%84%E7%90%86"><span class="nav-number">3.1.</span> <span class="nav-text">移动的处理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%BC%A9%E6%94%BE%E7%9A%84%E5%A4%84%E7%90%86"><span class="nav-number">3.2.</span> <span class="nav-text">缩放的处理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%A7%A6%E5%8F%91%E7%9A%84%E6%97%B6%E9%97%B4%E9%97%B4%E9%9A%94-dt"><span class="nav-number">3.3.</span> <span class="nav-text">触发的时间间隔 (dt)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%BB%93%E6%9D%9F%E5%88%A4%E5%AE%9A"><span class="nav-number">3.4.</span> <span class="nav-text">结束判定</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%B8%B8%E6%95%B0%E7%B3%BB%E6%95%B0%E9%80%89%E6%8B%A9"><span class="nav-number">3.5.</span> <span class="nav-text">常数系数选择</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%80%E4%BA%9B%E5%9D%91"><span class="nav-number">3.6.</span> <span class="nav-text">一些坑</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%BA%90%E7%A0%81%E6%95%AC%E4%B8%8A"><span class="nav-number">4.</span> <span class="nav-text">源码敬上</span></a></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="VoidDog"
+      src="https://i.imgur.com/rO7BKq2.png">
+  <p class="site-author-name" itemprop="name">VoidDog</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/voiddog" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/qgx446738721" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;qgx446738721" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.facebook.com/voiddog" title="Facebook → https:&#x2F;&#x2F;www.facebook.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-facebook fa-fw"></i>Facebook</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/voiddog" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-instagram fa-fw"></i>Instagram</a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://blog.voiddog.org/1547471396/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://i.imgur.com/rO7BKq2.png">
+      <meta itemprop="name" content="VoidDog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爆裂吧现实">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          如何优雅地在Android上实现iOS的图片预览
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2017-01-19 00:37:06" itemprop="dateCreated datePublished" datetime="2017-01-19T00:37:06+00:00">2017-01-19</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-11-02 10:15:43" itemprop="dateModified" datetime="2020-11-02T10:15:43+00:00">2020-11-02</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Android/" itemprop="url" rel="index"><span itemprop="name">Android</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Android/UI/" itemprop="url" rel="index"><span itemprop="name">UI</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>用过 iOS 的都知道，拟物理的回弹效果在上面非常普遍，因为这是 iOS 系统支持的一套 UI 框架，但是 Android 就没有了，就拿图片查看器来讲，iOS 的效果就是感觉一张图片被绑定在了弹簧装置上，滑动很自然，Android 没有自带的图片查看器，需要自己实现</p>
+<p>市面上主流的图片查看器都没有回弹的效果，一部分原因是没有这个需求，还有一部分是实现麻烦，这里讲述一个个人认为最好的方案</p>
+<h3 id="需求"><a href="#需求" class="headerlink" title="需求"></a>需求</h3><p>一个图片查看器，要求可以滑动 Fling，触碰到边界的时候回弹，有越界回弹的效果，支持双指缩放，双击缩放</p>
+<h3 id="分析"><a href="#分析" class="headerlink" title="分析"></a>分析</h3><p>咋一看需求，应该好写，滚动的时候用 <code>Scroller</code> 来解决，回弹效果直接用 <code>ValueAnimator</code>，设置插值器为减速插值器来解决。看似简单，但是因为是仿物理效果，中间牵扯到从滚动到回弹的时候（<code>Scroller</code>动画切换到<code>ValueAnimator</code>动画）的速度衔接问题，要看上去从滚动到开始回弹至结束没有突兀，中间的特判边界处理是很麻烦的，还要牵扯到缩放，所以不考虑这种方案</p>
+<p>既然是要模拟现实中的物理效果，为何不在每一帧根据当前的状态得到对用的加速度，然后去计算下一帧的状态位置，这样只要模拟现实中的物理加速度不就可以实现了吗，那些边界特判之类的就可以去见阎王了</p>
+<p>方案确定完毕，接下来就是选定加速度的方程，要模拟弹簧的效果，拉力很简单，用胡克定律嘛！<code>F = k * dx</code>，摩擦力呢？<code>Ff = μ*FN</code> ? 这里推荐一个更加好的方案，借鉴自 <a target="_blank" rel="noopener" href="http://facebook.github.io/rebound/">Rebound</a> 库，这是 Facebook 的一个弹簧动画库，设定一个目的数值，它会根据当前的拉力，摩擦力，速度然后变化到目标值，加速度方程为</p>
+<p>$$<br>\vec a=tension\cdot\vec {dx} - friction\cdot\vec v<br>$$</p>
+<p>其中 <code>tension</code> 为弹性系数，<code>friction</code>为摩擦力系数，为什么让摩擦力和速度成正比呢？如果摩擦力和速度成正比，那么就不存在静摩擦力，也就是不存在物体静止情况下拉力小于摩擦力的情况（因为速度为0的时候，阻力为0，除非拉力为0），物体肯定会向目标地点靠近，遏制了物体摩擦力过大而无法达到目的地情况</p>
+<a id="more"></a>
+
+<h3 id="类的设计"><a href="#类的设计" class="headerlink" title="类的设计"></a>类的设计</h3><p>为了方便接入各种 <code>View</code> ，设计一个 <code>ZoomableGestureHelper</code> 类</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">ZoomableGestureHelper</span></span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 因为可以缩放，平移，用矩阵来表示结果最好</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Matrix <span class="title">getZoomMatrix</span><span class="params">()</span>；</span></span><br><span class="line"><span class="function">    <span class="comment">/**</span></span></span><br><span class="line"><span class="function"><span class="comment">     * 计算下一帧的位置，dt单位为秒，模拟现实物理</span></span></span><br><span class="line"><span class="function"><span class="comment">     */</span></span></span><br><span class="line"><span class="function">    <span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">compute</span><span class="params">(<span class="keyword">double</span> dt)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取到外部容器的范围</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">abstract</span> Rect <span class="title">getBounds</span><span class="params">(Rect rect)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 内部滚动视图的范围</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">abstract</span> Rect <span class="title">getInnerBounds</span><span class="params">(Rect rect)</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>设计目的，我只需要知道视图的大小边界 (bounds) 和内部可滚动回弹的边界 (innerBounds)，就可以通过计算得到一个新的转换矩阵</p>
+<p>对于物理状态，需要一个类 <code>SpringPhysicsState</code> 来做存储，里面包含了速度、拉力系数、摩擦力系数，不保存位置，因为位置是通过 <code>getBounds</code> 动态计算得到的</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">SpringPhysicsState</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 速度</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">double</span> velocity;</span><br><span class="line">    <span class="comment">// 拉力弹性系数</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">double</span> tension;</span><br><span class="line">    <span class="comment">// 摩擦力系数</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">double</span> friction;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ---------- 构造函数 ----------</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 默认数值 tension = 40, friction = 12;</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">SpringPhysicsState</span><span class="params">()</span></span>&#123;</span><br><span class="line">        init(<span class="number">40</span>, <span class="number">12</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">SpringPhysicsState</span><span class="params">(<span class="keyword">double</span> tension, <span class="keyword">double</span> friction)</span></span>&#123;</span><br><span class="line">        init(tension, friction);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">double</span> <span class="title">computeNextPosition</span><span class="params">(<span class="keyword">double</span> startPosition, <span class="keyword">double</span> endPosition, <span class="keyword">double</span> dt)</span></span>&#123;</span><br><span class="line">        <span class="comment">// 此处省略计算代码，后面会补充</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ---------- setter and getter -----------</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">double</span> <span class="title">getVelocity</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> velocity;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setVelocity</span><span class="params">(<span class="keyword">double</span> velocity)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.velocity = velocity;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">double</span> <span class="title">getTension</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> tension;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setTension</span><span class="params">(<span class="keyword">double</span> tension)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.tension = tension;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">double</span> <span class="title">getFriction</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> friction;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setFriction</span><span class="params">(<span class="keyword">double</span> friction)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.friction = friction;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ------------------ 私有函数 -------------------</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">init</span><span class="params">(<span class="keyword">double</span> tension, <span class="keyword">double</span> friction)</span></span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.velocity = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">this</span>.friction = friction;</span><br><span class="line">        <span class="keyword">this</span>.tension = tension;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="移动的处理"><a href="#移动的处理" class="headerlink" title="移动的处理"></a>移动的处理</h4><p>速度分解成水平方向和垂直方向，因为处理方法一样，下面只讲述垂直方向的计算</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">compute</span><span class="params">(<span class="keyword">double</span> realDeltaTime)</span></span>&#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 更新 bounds 信息, bounds 为 Rect 类型</span></span><br><span class="line">    getBounds(bounds);</span><br><span class="line">    getInnerBounds(innerBounds);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 以下移动的计算</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">double</span> xPosition = <span class="number">0</span>, xEndPosition = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">double</span> yPosition = <span class="number">0</span>, yEndPosition = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">// 设置摩擦力系数</span></span><br><span class="line">    xPhysicsState.setFriction(FRICTION * getDensity());</span><br><span class="line">    yPhysicsState.setFriction(FRICTION * getDensity());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 计算x轴方向</span></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 计算y轴方向</span></span><br><span class="line">    <span class="keyword">if</span> (getHeight(bounds) &gt; getHeight(innerBounds))&#123;</span><br><span class="line">        <span class="comment">// 状态3 （见下面解析）</span></span><br><span class="line">        yPosition = (innerBounds.bottom + innerBounds.top) / <span class="number">2.0f</span>;</span><br><span class="line">        yEndPosition = (bounds.top + bounds.bottom) / <span class="number">2.0f</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (innerBounds.top &gt; bounds.top)&#123;</span><br><span class="line">            <span class="comment">// 状态1</span></span><br><span class="line">            yPosition = innerBounds.top;</span><br><span class="line">            yEndPosition = bounds.top;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (innerBounds.bottom &lt; bounds.bottom)&#123;</span><br><span class="line">            <span class="comment">// 状态1</span></span><br><span class="line">            yPosition = innerBounds.bottom;</span><br><span class="line">            yEndPosition = bounds.bottom;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// 状态2，滑动fling状态，需要更换摩擦力系数</span></span><br><span class="line">            yPhysicsState.setFriction(FLING_FRICTION * getDensity());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">double</span> newYPosition = yPosition;</span><br><span class="line"></span><br><span class="line">    yPhysicsState.computeNextPosition(newYPosition, yEndPosition, SOLVER_TIMESTEP_SEC);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 移动</span></span><br><span class="line">    zooomMatrix.postTranslate((<span class="keyword">float</span>) (newXPosition - xPosition), (<span class="keyword">float</span>) (newYPosition - yPosition));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 返回false不会表示结束计算，不会有下次计算了</span></span><br><span class="line">    <span class="comment">// sgn 函数 (x) =&gt; (x &gt; EPS ? 1 : 0) - (x &lt; -EPS ? 1 : 0)</span></span><br><span class="line">    <span class="comment">// EPS = 1e-4;</span></span><br><span class="line">    <span class="keyword">return</span> sgn(newYPosition - yEndPosition) != <span class="number">0</span> || sgn(yPhysicsState.getVelocity()) != <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>红色框为视图的区域，蓝色框为内部图片的区域，帧计算触发时机使用 <code>View</code> 的 <code>computeScroll</code> 方法，这里会牵扯到停止判定，之后会讲述</p>
+</blockquote>
+<p><strong>状态1 ：其中一边有越界</strong></p>
+<p><img src="https://i.imgur.com/CMoVwdh.png" alt="Alt text"></p>
+<p>分析一下上图中的位置，蓝色部分为内部图片，它被拖动越界了，此时的合力应该为 <code>tension * dx - friction * v</code>, <code>v</code>为图片在 y 轴方向上的速度，（<code>dx</code> 和 <code>v</code> 都是矢量，我暂且设置向右和向下为正），之后就直接调用<code>invalidate();</code>，就可以播放动画了。</p>
+<p><strong>状态2：两边都没越界</strong></p>
+<p><img src="https://i.imgur.com/N8CATcD.png" alt="Imgur"></p>
+<p>此时因为两边都没有越界，所以应该不存在拉力，可以认为此时<code>dx</code>为0，摩擦力需要注意下，因为可以支持滑动（<code>Fling</code>），所以此时的摩擦力要比之前越界回弹时候的摩擦力小，至于具体数值，文末会给出</p>
+<p><strong>状态3：两边都超出</strong></p>
+<p><img src="https://i.imgur.com/1XWuNKM.png" alt="Imgur"></p>
+<p>此时两边都超出边界，蓝色区域应该和红色区域中心绑定，所以此时的 <code>dx</code>为 <code>dxBottom - dxTop</code>（注意符号，因为<code>dx</code>为矢量，所以不能是<code>dxTop - dxBottom</code>）</p>
+<h4 id="缩放的处理"><a href="#缩放的处理" class="headerlink" title="缩放的处理"></a>缩放的处理</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">compute</span><span class="params">(<span class="keyword">double</span> realDeltaTime)</span></span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 以下缩放的计算</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">double</span> scale = Math.max(getWidth(innerBounds) * <span class="number">1.0</span> / getWidth(bounds), getHeight(innerBounds) * <span class="number">1.0</span> / getHeight(bounds));</span><br><span class="line">    <span class="keyword">double</span> endScale = <span class="number">1</span>, startScale = scale;</span><br><span class="line">    <span class="keyword">if</span>(scale &gt;= <span class="number">1</span>)&#123;</span><br><span class="line">        <span class="comment">// 此时表示不需要自动适应，把dx改为0</span></span><br><span class="line">        endScale = scale;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 计算下一帧的缩放值</span></span><br><span class="line">    scale = scalePhysicsState.computeNextPosition(scale, endScale, SOLVER_TIMESTEP_SEC);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(sgn(scale) != <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// x, y 为缩放中心</span></span><br><span class="line">        <span class="keyword">double</span> x = autoScale ? autoScaleCenterX : (innerBounds.right + innerBounds.left) / <span class="number">2.0</span>;</span><br><span class="line">        <span class="keyword">double</span> y = autoScale ? autoScaleCenterY : (innerBounds.bottom + innerBounds.top) / <span class="number">2.0</span>;</span><br><span class="line">        zooomMatrix.postScale((<span class="keyword">float</span>)(scale / startScale), (<span class="keyword">float</span>)(scale / startScale),</span><br><span class="line">                (<span class="keyword">float</span>)x, (<span class="keyword">float</span>)y);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> sgn(scale) != <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>缩放的方法和移动一致，设定 <code>tension</code> 和 <code>friction</code> ，边界设定为外面红色的框框，蓝色区域无法某一边充满红色区域的时候，有拉力，否则没拉力，摩擦力一直存在，至于双击放大和放小，只需要在双击的时候给缩放状态设置一个初速度，然后<code>invalidate();</code>，搞定！是不是很简单啊</p>
+<h4 id="触发的时间间隔-dt"><a href="#触发的时间间隔-dt" class="headerlink" title="触发的时间间隔 (dt)"></a>触发的时间间隔 (dt)</h4><p>时间这一个参数在计算中是非常重要的，这关系到当前微分状态的数值变化，假如用欧拉方法模拟速度和位置的变化，<code>x&#39; = x + v * dt</code>，<code>v&#39; = v + a * dt</code>，公式可以看出时间决定了动画的快慢，为了接近现实物理时间，这里采用的时间单位为秒（计算机中常用的是毫秒）</p>
+<p>确定了单位，还需要控制一下时间间隔的数值范围，我们不能让两次<code>computeScroll</code>的时间间隔过于短或者过于长，这里采用的策略为固定每次计算时候的时间间隔，如果两次 <code>computeScroll</code> 的时间间隔小于此时间间隔，那么保存累计时间间隔，等待下一次 <code>computeScroll</code>，直到大于等于固定的时间间隔，再用 <code>while</code> 循环一步一步的计算</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">compute</span><span class="params">(<span class="keyword">double</span> realDeltaTime)</span></span>&#123;</span><br><span class="line">    <span class="keyword">double</span> adjustTime = realDeltaTime;</span><br><span class="line">    <span class="comment">// 如果大于最大给定的间隔，设置成最大</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (adjustTime &gt; MAX_DELTA_TIME_SEC)&#123;</span><br><span class="line">        adjustTime = MAX_DELTA_TIME_SEC;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 计时</span></span><br><span class="line">    timeAccumulator += adjustTime;</span><br><span class="line">    <span class="comment">// 分步 while 计算</span></span><br><span class="line">    <span class="keyword">while</span>(timeAccumulator &gt;= SOLVER_TIMESTEP_SEC)&#123;</span><br><span class="line">        timeAccumulator -= SOLVER_TIMESTEP_SEC;</span><br><span class="line">        </span><br><span class="line">        newXPosition = xPhysicsState.computeNextPosition(newXPosition, xEndPosition, SOLVER_TIMESTEP_SEC);</span><br><span class="line">        newYPosition = yPhysicsState.computeNextPosition(newYPosition, yEndPosition, SOLVER_TIMESTEP_SEC);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="结束判定"><a href="#结束判定" class="headerlink" title="结束判定"></a>结束判定</h4><p>结束判定是唯一的一个坑，因为计算机只是在 <code>dt</code> 时间内模拟速度和位移的变化，不是通过微积分计算的，存在误差，比如欧拉方法 <code>x&#39; = x + v * dt</code> 和 <code>v&#39; = v + a * dt</code>计算得到的 <code>x&#39;</code> 和 <code>v&#39;</code> 都是近似数值，把 <code>dt</code>这段时间内的变化看成了匀变速运动</p>
+<blockquote>
+<p>计算机中欧拉方法误差还是大的，可以选择另一种误差小的计算方法，龙格库塔4阶，精度很高</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 四阶龙格库塔</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">double</span> <span class="title">computeNextPosition</span><span class="params">(<span class="keyword">double</span> startPosition, <span class="keyword">double</span> endPosition, <span class="keyword">double</span> dt)</span></span>&#123;</span><br><span class="line">    <span class="keyword">double</span> position;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">double</span> tempPosition, tempVelocity;</span><br><span class="line">    <span class="keyword">double</span> aVelocity, aAcceleration;</span><br><span class="line">    <span class="keyword">double</span> bVelocity, bAcceleration;</span><br><span class="line">    <span class="keyword">double</span> cVelocity, cAcceleration;</span><br><span class="line">    <span class="keyword">double</span> dVelocity, dAcceleration;</span><br><span class="line"></span><br><span class="line">    position = startPosition;</span><br><span class="line">    tempPosition = startPosition;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 龙格库塔 4阶</span></span><br><span class="line">    aVelocity = velocity;</span><br><span class="line">    aAcceleration = (tension * (endPosition - tempPosition)) - friction * velocity;</span><br><span class="line"></span><br><span class="line">    tempPosition = position + aVelocity * dt * <span class="number">0.5f</span>;</span><br><span class="line">    tempVelocity = velocity + aAcceleration * dt * <span class="number">0.5f</span>;</span><br><span class="line">    bVelocity = tempVelocity;</span><br><span class="line">    bAcceleration = (tension * (endPosition - tempPosition)) - friction * tempVelocity;</span><br><span class="line"></span><br><span class="line">    tempPosition = position + bVelocity * dt * <span class="number">0.5f</span>;</span><br><span class="line">    tempVelocity = velocity + bAcceleration * dt * <span class="number">0.5f</span>;</span><br><span class="line">    cVelocity = tempVelocity;</span><br><span class="line">    cAcceleration = (tension * (endPosition - tempPosition)) - friction * tempVelocity;</span><br><span class="line"></span><br><span class="line">    tempPosition = position + cVelocity * dt;</span><br><span class="line">    tempVelocity = velocity + cAcceleration * dt;</span><br><span class="line">    dVelocity = tempVelocity;</span><br><span class="line">    dAcceleration = (tension * (endPosition - tempPosition)) - friction * tempVelocity;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Take the weighted sum of the 4 derivatives as the final output.</span></span><br><span class="line">    <span class="keyword">double</span> dxdt = <span class="number">1.0f</span>/<span class="number">6.0f</span> * (aVelocity + <span class="number">2.0f</span> * (bVelocity + cVelocity) + dVelocity);</span><br><span class="line">    <span class="keyword">double</span> dvdt = <span class="number">1.0f</span>/<span class="number">6.0f</span> * (aAcceleration + <span class="number">2.0f</span> * (bAcceleration + cAcceleration) + dAcceleration);</span><br><span class="line"></span><br><span class="line">    position += dxdt * dt;</span><br><span class="line">    velocity += dvdt * dt;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> position;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>所以结束判定还需要设置一个阈值，当速度和偏移量小于此数值的时候，可以认定为达到了目的地</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">boolean</span> <span class="title">isAtReset</span><span class="params">(SpringPhysicsState physicsState, <span class="keyword">double</span> positionDis)</span></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> Math.abs(physicsState.getVelocity()) &lt; getDensity() * MIN_RESET_VELOCITY &amp;&amp;</span><br><span class="line">            (Math.abs(positionDis) &lt; getDensity() * MIN_RESET_POSITION || sgn(physicsState.getTension()) == <span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="常数系数选择"><a href="#常数系数选择" class="headerlink" title="常数系数选择"></a>常数系数选择</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 用于 sgn 函数</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">double</span> EPS = <span class="number">1e-4</span>;</span><br><span class="line"><span class="comment">// 每一步计算的时间间隔</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">double</span> SOLVER_TIMESTEP_SEC = <span class="number">0.001</span>;</span><br><span class="line"><span class="comment">// 最大的计算时间间隔 dt</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">double</span> MAX_DELTA_TIME_SEC = <span class="number">0.064</span>;</span><br><span class="line"><span class="comment">// reset 位置 0.05 dp/s 0.05dp</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">double</span> MIN_RESET_VELOCITY = <span class="number">0.05</span>;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">double</span> MIN_RESET_POSITION = <span class="number">0.05</span>;</span><br><span class="line"><span class="comment">// 缩放开始速度</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">double</span> AUTO_SCALE_VELOCITY = <span class="number">10</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 系数常数</span></span><br><span class="line"><span class="comment">// 滑动时候的摩擦力</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">double</span> FLING_FRICTION = <span class="number">1</span>;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">double</span> FRICTION = <span class="number">12</span>;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">double</span> TENSION = <span class="number">80</span>;</span><br></pre></td></tr></table></figure>
+
+<h4 id="一些坑"><a href="#一些坑" class="headerlink" title="一些坑"></a>一些坑</h4><p>对于 <code>ViewPager</code> 的适配有些问题，如果在 <code>Down</code> 的时候 <code>requestDisallow true</code> 移动过程中到了左右边界又 <code>requestDisallow false</code>，此时 <code>ViewPager</code> 会有一个突变（<strong>突变可耻但有用</strong>），而且多指头的时候可能会崩溃，这是 <code>ViewPager</code>的 Bug，具体细节请看源码</p>
+<h3 id="源码敬上"><a href="#源码敬上" class="headerlink" title="源码敬上"></a><a target="_blank" rel="noopener" href="https://github.com/voiddog/ZoomableDrawee">源码敬上</a></h3>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Android/" rel="tag"># Android</a>
+              <a href="/tags/UI/" rel="tag"># UI</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/1547471496/" rel="prev" title="快速模糊效果">
+                  <i class="fa fa-chevron-left"></i> 快速模糊效果
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/1547471296/" rel="next" title="在Android上使用FFmpeg压缩视频">
+                  在Android上使用FFmpeg压缩视频 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">VoidDog</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

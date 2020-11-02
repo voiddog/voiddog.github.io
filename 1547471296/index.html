@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"blog.voiddog.org","root":"/","scheme":"Pisces","version":"8.0.0-rc.5","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false};
+  </script>
+
+  <meta name="description" content="前几天项目需要压缩视频，Github上找了许多库，要么就是太大，要么就是质量不高，其实我只需要压缩视频，最好的方案还是定制编译一个 FFmpeg 给 Android 用。  本项目使用 FFmpeg 和 libx264(一个第三方的视频编码器) 来编译出可以在 Android 上使用的动态库">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在Android上使用FFmpeg压缩视频">
+<meta property="og:url" content="http://blog.voiddog.org/1547471296/index.html">
+<meta property="og:site_name" content="爆裂吧现实">
+<meta property="og:description" content="前几天项目需要压缩视频，Github上找了许多库，要么就是太大，要么就是质量不高，其实我只需要压缩视频，最好的方案还是定制编译一个 FFmpeg 给 Android 用。  本项目使用 FFmpeg 和 libx264(一个第三方的视频编码器) 来编译出可以在 Android 上使用的动态库">
+<meta property="og:locale">
+<meta property="article:published_time" content="2017-06-18T16:37:56.000Z">
+<meta property="article:modified_time" content="2020-11-02T10:15:43.957Z">
+<meta property="article:author" content="VoidDog">
+<meta property="article:tag" content="Android">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="http://blog.voiddog.org/1547471296/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>在Android上使用FFmpeg压缩视频 | 爆裂吧现实</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175543622-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-175543622-1');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">爆裂吧现实</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">不想死就早点睡</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E4%B8%8B%E8%BD%BD%E6%BA%90%E7%A0%81"><span class="nav-number">1.</span> <span class="nav-text">一、下载源码</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E7%BC%96%E8%AF%91-FFmpeg"><span class="nav-number">2.</span> <span class="nav-text">二、编译 FFmpeg</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BC%96%E8%AF%91-x264-%E7%BC%96%E7%A0%81%E5%99%A8"><span class="nav-number">2.1.</span> <span class="nav-text">编译 x264 编码器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BC%96%E8%AF%91-FFmpeg"><span class="nav-number">2.2.</span> <span class="nav-text">编译 FFmpeg</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%9C%A8-Android-%E9%87%8C%E4%BD%BF%E7%94%A8-FFmpeg"><span class="nav-number">3.</span> <span class="nav-text">三、在 Android 里使用 FFmpeg</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BF%AE%E6%94%B9-ffmpeg-c-%E5%9D%91%E7%82%B9%E4%B8%80"><span class="nav-number">3.0.1.</span> <span class="nav-text">修改 ffmpeg.c 坑点一</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BF%AE%E6%94%B9-ffmpeg-c-%E5%9D%91%E7%82%B9%E4%BA%8C"><span class="nav-number">3.0.2.</span> <span class="nav-text">修改 ffmpeg.c 坑点二</span></a></li></ol></li></ol></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="VoidDog"
+      src="https://i.imgur.com/rO7BKq2.png">
+  <p class="site-author-name" itemprop="name">VoidDog</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/voiddog" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/qgx446738721" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;qgx446738721" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.facebook.com/voiddog" title="Facebook → https:&#x2F;&#x2F;www.facebook.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-facebook fa-fw"></i>Facebook</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/voiddog" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-instagram fa-fw"></i>Instagram</a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://blog.voiddog.org/1547471296/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://i.imgur.com/rO7BKq2.png">
+      <meta itemprop="name" content="VoidDog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爆裂吧现实">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          在Android上使用FFmpeg压缩视频
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2017-06-18 16:37:56" itemprop="dateCreated datePublished" datetime="2017-06-18T16:37:56+00:00">2017-06-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-11-02 10:15:43" itemprop="dateModified" datetime="2020-11-02T10:15:43+00:00">2020-11-02</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Android/" itemprop="url" rel="index"><span itemprop="name">Android</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>前几天项目需要压缩视频，<code>Github</code>上找了许多库，要么就是太大，要么就是质量不高，其实我只需要压缩视频，最好的方案还是定制编译一个 <code>FFmpeg</code> 给 <code>Android</code> 用。</p>
+<blockquote>
+<p>本项目使用 <code>FFmpeg</code> 和 <code>libx264</code>(一个第三方的视频编码器) 来编译出可以在 <code>Android</code> 上使用的动态库 </p>
+</blockquote>
+<a id="more"></a>
+
+<h1 id="一、下载源码"><a href="#一、下载源码" class="headerlink" title="一、下载源码"></a>一、下载源码</h1><p>创建一个叫 <code>FFmpegAndroid</code> 的目录，下载 <code>libx264</code> 的<a target="_blank" rel="noopener" href="http://www.videolan.org/developers/x264.html">源码</a>和<code>ffmpeg</code>的<a target="_blank" rel="noopener" href="https://ffmpeg.org/">源码</a>，然后在 <code>FFmpegAndroid</code> 文件夹下建立一个 <code>bulid</code> 文件夹，用于存放编译脚本和输出</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">--- FFmpegAndroid</span><br><span class="line"> |-- ffmpeg</span><br><span class="line"> |-- x264</span><br><span class="line"> |-- build</span><br></pre></td></tr></table></figure>
+
+<h1 id="二、编译-FFmpeg"><a href="#二、编译-FFmpeg" class="headerlink" title="二、编译 FFmpeg"></a>二、编译 FFmpeg</h1><h2 id="编译-x264-编码器"><a href="#编译-x264-编码器" class="headerlink" title="编译 x264 编码器"></a>编译 x264 编码器</h2><p>先在 <code>build</code> 文件夹下建立 <code>setting.sh</code>, 用于申明一些公用的环境变量，比如 <code>$NDK</code>、<code>$CPU</code>…</p>
+<p><strong>setting.sh</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># ndk 环境</span></span><br><span class="line">NDK=<span class="variable">$HOME</span>/Library/Android/sdk/ndk-bundle</span><br><span class="line">SYSROOT=<span class="variable">$NDK</span>/platforms/android-14/arch-arm/</span><br><span class="line">TOOLCHAIN=<span class="variable">$NDK</span>/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64</span><br><span class="line"><span class="comment"># cpu 架构平台，若要编译 x86 则指定 x86</span></span><br><span class="line">CPU=armv7<span class="_">-a</span></span><br></pre></td></tr></table></figure>
+
+<p>然后建立 <code>libx264</code> 的编译脚本 <code>build_x264.sh</code>，<code>libx264</code> 是一个开源的H.264编码器，据说是最好的视频有损编码器。<code>ffmpeg</code> 默认不自带，但是支持 <code>x264</code> 作为第三方编码器编译。</p>
+<p><strong>build_x264.sh</strong></p>
+<blockquote>
+<p><strong>./config 内的# 注释必须在运行的时候去掉</strong></p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 引入需要的环境变量</span></span><br><span class="line">. setting.sh</span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出下看看对不对，可以去掉，这里调试用</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;use toolchain: <span class="variable">$TOOLCHAIN</span>&quot;</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;use system root: <span class="variable">$SYSROOT</span>&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出文件的前缀，也就是指定最后静态库输出到那里</span></span><br><span class="line">PREFIX=$(<span class="built_in">pwd</span>)/lib/x264/<span class="variable">$CPU</span></span><br><span class="line"><span class="comment"># 优化参数</span></span><br><span class="line">OPTIMIZE_CFLAGS=<span class="string">&quot;-mfloat-abi=softfp -mfpu=vfp -marm -march=<span class="variable">$CPU</span> &quot;</span></span><br><span class="line">ADDI_CFLAGS=<span class="string">&quot;&quot;</span></span><br><span class="line">ADDI_LDFLAGS=<span class="string">&quot;&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 因为当前目录在 build 目录，需要切换到 x264 去执行 config</span></span><br><span class="line"><span class="built_in">cd</span> ../x264</span><br><span class="line"><span class="keyword">function</span> build_x264</span><br><span class="line">&#123;</span><br><span class="line">./configure \</span><br><span class="line">    --prefix=<span class="variable">$PREFIX</span> \</span><br><span class="line">    <span class="comment"># 不编译动态库</span></span><br><span class="line">    --<span class="built_in">disable</span>-shared \</span><br><span class="line">    --<span class="built_in">disable</span>-asm \</span><br><span class="line">    <span class="comment"># 编译静态库</span></span><br><span class="line">    --<span class="built_in">enable</span>-static \</span><br><span class="line">    --<span class="built_in">enable</span>-pic \</span><br><span class="line">    --<span class="built_in">enable</span>-strip \</span><br><span class="line">    --host=arm-linux-androideabi \</span><br><span class="line">    --cross-prefix=<span class="variable">$TOOLCHAIN</span>/bin/arm-linux-androideabi- \</span><br><span class="line">    --sysroot=<span class="variable">$SYSROOT</span> \</span><br><span class="line">    --extra-cflags=<span class="string">&quot;-Os -fpic <span class="variable">$ADDI_CFLAGS</span> <span class="variable">$OPTIMIZE_CFLAGS</span>&quot;</span> \</span><br><span class="line">    --extra-ldflags=<span class="string">&quot;<span class="variable">$ADDI_LDFLAGS</span>&quot;</span> \</span><br><span class="line">    <span class="variable">$ADDITIONAL_CONFIGURE_FLAG</span></span><br><span class="line">make clean</span><br><span class="line">make -j4</span><br><span class="line">make install</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 执行编译指令</span></span><br><span class="line">build_x264</span><br></pre></td></tr></table></figure>
+
+<p>写完之后就可以编译 <code>x264</code> 库了，编译之前还有一点要注意的是，默认编译出来的文件后缀并不是 <code>*.so</code>，这 <code>Android</code> 是识别不了的，需要对 <code>x264</code> 源码里面的 <code>config</code> 做如下修改：</p>
+<p>将</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">&quot;SOSUFFIX=so&quot;</span> &gt;&gt; config.mak</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;SONAME=libx264.so.<span class="variable">$API</span>&quot;</span> &gt;&gt; config.mak</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;SOFLAGS=-shared -Wl,-soname,\$(SONAME) <span class="variable">$SOFLAGS</span>&quot;</span> &gt;&gt; config.mak</span><br></pre></td></tr></table></figure>
+<p>修改成</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">&quot;SOSUFFIX=so&quot;</span> &gt;&gt; config.mak</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;SONAME=libx264-<span class="variable">$API</span>.so&quot;</span> &gt;&gt; config.mak</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;SOFLAGS=-shared -Wl,-soname,\$(SONAME) <span class="variable">$SOFLAGS</span>&quot;</span> &gt;&gt; config.mak</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>别忘了给 <code>build_x264.sh</code> 和 <code>setting.sh</code> 赋予可执行权限 (<code>chmod +x build_x264.sh setting.sh</code>)</p>
+</blockquote>
+<p>修改完后就可以执行脚本命令了</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./build_x264.sh</span><br></pre></td></tr></table></figure>
+
+<p>等待一段时间后，<code>build</code> 文件夹目录下应该有个 <code>lib</code> 目录（build 脚本里面 prefix 指定的目录），里面存放了 <code>x264</code> 的静态库</p>
+<blockquote>
+<p>这里为什么编译成静态库而不是动态库呢？静态库可以把内容编译到待会儿要编译 <code>ffmpeg</code> 的so库里去，不需要单独加载 <code>libx264.so</code> 了，如果你硬要编译成动态库也可以，加载 <code>ffmpeg.so</code> 的时候加载 <code>libx264.so</code> 就可以</p>
+</blockquote>
+<p>至此，<code>x264</code>编码器编译完毕</p>
+<h2 id="编译-FFmpeg"><a href="#编译-FFmpeg" class="headerlink" title="编译 FFmpeg"></a>编译 FFmpeg</h2><p>同样在 <code>build</code> 文件夹下建立编译脚本 <code>build_ffmpeg.sh</code>，编译 <code>ffmpeg</code> 比编译 <code>x264</code> 略微麻烦点，首先肯定不能全功能编译，那还不如直接去网上找一个编译好的，要自己定制哪些组件需要，哪些组件不需要</p>
+<p>FFmpeg它主要含有以下几个核心库：</p>
+<ul>
+<li>libavcodec-提供了更加全面的编解码实现的合集</li>
+<li>libavformat-提供了更加全面的音视频容器格式的封装和解析以及所支持的协议</li>
+<li>libavutil-提供了一些公共函数</li>
+<li>libavfilter-提供音视频的过滤器，如视频加水印、音频变声等</li>
+<li>libavdevice-提供支持众多设备数据的输入与输出，如读取摄像头数据、屏幕录制</li>
+<li>libswresample,libavresample-提供音频的重采样工具</li>
+<li>libswscale-提供对视频图像进行色彩转换、缩放以及像素格式转换，如图像的YUV转换</li>
+<li>libpostproc-多媒体后处理器</li>
+</ul>
+<p>如果不修改什么配置，直接编译的话，我发现 <code>libavcodec.so</code> 有 7.8MB，我可以在这方面下手，指定 <code>decoder</code> 和 <code>encoder</code>，因为我需要的是视频压缩，所以编码器（<code>encoder</code>）我就只需要 <code>x264</code>(视频编码) 和 <code>aac</code>(音频编码)，至于解码器，挑几个常用的就可以了</p>
+<blockquote>
+<p>查看编码器和解码器种类，可以通过 ./config –list-decoders 或 ./config –list-encoers 命令实现（ffmpeg目录下）<br>**./config 内的# 注释必须在运行的时候去掉**</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 导入环境变量</span></span><br><span class="line">. setting.sh</span><br><span class="line"></span><br><span class="line"><span class="comment"># 输出，调试用</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;use toolchain: <span class="variable">$TOOLCHAIN</span>&quot;</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;use system root: <span class="variable">$SYSROOT</span>&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># x264库所在的位置，ffmpeg 需要链接 x264</span></span><br><span class="line">LIB_DIR=$(<span class="built_in">pwd</span>)/lib;</span><br><span class="line"></span><br><span class="line"><span class="comment"># ffmpeg编译输出前缀</span></span><br><span class="line">PREFIX=<span class="variable">$LIB_DIR</span>/ffmpeg/<span class="variable">$CPU</span></span><br><span class="line"><span class="comment"># x264的头文件地址</span></span><br><span class="line">INC=<span class="string">&quot;<span class="variable">$LIB_DIR</span>/x264/<span class="variable">$CPU</span>/include&quot;</span></span><br><span class="line"><span class="comment"># x264的静态库地址</span></span><br><span class="line">LIB=<span class="string">&quot;<span class="variable">$LIB_DIR</span>/x264/<span class="variable">$CPU</span>/lib&quot;</span></span><br><span class="line"><span class="comment"># 输出调试</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;include dir: <span class="variable">$INC</span>&quot;</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;lib dir: <span class="variable">$LIB</span>&quot;</span></span><br><span class="line"><span class="comment"># 编译优化参数</span></span><br><span class="line">FF_EXTRA_CFLAGS=<span class="string">&quot;-march=<span class="variable">$CPU</span> -mfpu=vfpv3-d16 -mfloat-abi=softfp -mthumb&quot;</span> </span><br><span class="line"><span class="comment"># 编译优化参数，-I$INC 指定 x264 头文件路径</span></span><br><span class="line">FF_CFLAGS=<span class="string">&quot;-O3 -Wall -pipe \</span></span><br><span class="line"><span class="string">-ffast-math \</span></span><br><span class="line"><span class="string">-fstrict-aliasing -Werror=strict-aliasing \</span></span><br><span class="line"><span class="string">-Wno-psabi -Wa,--noexecstack \</span></span><br><span class="line"><span class="string">-DANDROID  \</span></span><br><span class="line"><span class="string">-I<span class="variable">$INC</span>&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">cd</span> ../ffmpeg</span><br><span class="line"><span class="keyword">function</span> build_arm</span><br><span class="line">&#123;</span><br><span class="line">./configure \</span><br><span class="line">    <span class="comment"># 这里需要启动生成动态库</span></span><br><span class="line">    --<span class="built_in">enable</span>-shared \</span><br><span class="line">    <span class="comment"># 静态库就不生成了</span></span><br><span class="line">    --<span class="built_in">disable</span>-static \</span><br><span class="line">    --<span class="built_in">disable</span>-ffmpeg \</span><br><span class="line">    --<span class="built_in">disable</span>-ffplay \</span><br><span class="line">    --<span class="built_in">disable</span>-ffprobe \</span><br><span class="line">    --<span class="built_in">disable</span>-ffserver \</span><br><span class="line">    --<span class="built_in">disable</span>-symver \</span><br><span class="line">    <span class="comment"># 禁用全部的编码</span></span><br><span class="line">    --<span class="built_in">disable</span>-encoders \</span><br><span class="line">    <span class="comment"># 启用 x264 这个库</span></span><br><span class="line">    --<span class="built_in">enable</span>-libx264 \</span><br><span class="line">    <span class="comment"># 启用 x264 编码</span></span><br><span class="line">    --<span class="built_in">enable</span>-encoder=libx264 \</span><br><span class="line">    <span class="comment"># 启用 aac 音频编码</span></span><br><span class="line">    --<span class="built_in">enable</span>-encoder=aac \</span><br><span class="line">    <span class="comment"># 启用几个图片编码，由于生成视频预览</span></span><br><span class="line">    --<span class="built_in">enable</span>-encoder=mjpeg \</span><br><span class="line">    --<span class="built_in">enable</span>-encoder=png \</span><br><span class="line">    <span class="comment"># 禁用全部的解码器</span></span><br><span class="line">    --<span class="built_in">disable</span>-decoders \</span><br><span class="line">    <span class="comment"># 启用几个常用的解码</span></span><br><span class="line">    --<span class="built_in">enable</span>-decoder=aac \</span><br><span class="line">    --<span class="built_in">enable</span>-decoder=aac_latm \</span><br><span class="line">    --<span class="built_in">enable</span>-decoder=h264 \</span><br><span class="line">    --<span class="built_in">enable</span>-decoder=mpeg4 \</span><br><span class="line">    --<span class="built_in">enable</span>-decoder=mjpeg \</span><br><span class="line">    --<span class="built_in">enable</span>-decoder=png \</span><br><span class="line">    --<span class="built_in">disable</span>-demuxers \</span><br><span class="line">    --<span class="built_in">enable</span>-demuxer=image2 \</span><br><span class="line">    --<span class="built_in">enable</span>-demuxer=h264 \</span><br><span class="line">    --<span class="built_in">enable</span>-demuxer=aac \</span><br><span class="line">    --<span class="built_in">enable</span>-demuxer=avi \</span><br><span class="line">    --<span class="built_in">enable</span>-demuxer=mpc \</span><br><span class="line">    --<span class="built_in">enable</span>-demuxer=mov \</span><br><span class="line">    --<span class="built_in">disable</span>-parsers \</span><br><span class="line">    --<span class="built_in">enable</span>-parser=aac \</span><br><span class="line">    --<span class="built_in">enable</span>-parser=ac3 \</span><br><span class="line">    --<span class="built_in">enable</span>-parser=h264 \</span><br><span class="line">    <span class="comment"># 这几个库应该需要，没怎么测试，反正很小就加上了</span></span><br><span class="line">    --<span class="built_in">enable</span>-avresample \</span><br><span class="line">    --<span class="built_in">enable</span>-small \</span><br><span class="line">    --<span class="built_in">enable</span>-avfilter \</span><br><span class="line">    <span class="comment"># 这两个是链接 x264 静态库需要</span></span><br><span class="line">    --<span class="built_in">enable</span>-gpl \</span><br><span class="line">    --<span class="built_in">enable</span>-yasm \</span><br><span class="line">    <span class="comment"># 编译输出前缀</span></span><br><span class="line">    --prefix=<span class="variable">$PREFIX</span> \</span><br><span class="line">    --cross-prefix=<span class="variable">$TOOLCHAIN</span>/bin/arm-linux-androideabi- \</span><br><span class="line">    --target-os=linux \</span><br><span class="line">    --arch=arm \</span><br><span class="line">    --<span class="built_in">enable</span>-cross-compile \</span><br><span class="line">    --sysroot=<span class="variable">$SYSROOT</span> \</span><br><span class="line">    --extra-cflags=<span class="string">&quot;<span class="variable">$FF_CFLAGS</span> <span class="variable">$FF_EXTRA_CFLAGS</span>&quot;</span> \</span><br><span class="line">    <span class="comment"># 指定 x264 静态库位置</span></span><br><span class="line">    --extra-ldflags=<span class="string">&quot;-Wl,-L<span class="variable">$LIB</span>&quot;</span></span><br><span class="line">make clean</span><br><span class="line">make -j16</span><br><span class="line">make install</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">build_arm</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>这次编译不用静态库的原因是，静态库链接是有顺序要求的，这里模块太多，我也不知道哪个模块依赖哪个模块，所以直接上动态库</p>
+</blockquote>
+<p>脚本写完后，就可以 run 了，编译时间有点久，可以学学我的某个同学，一编译就起来泡泡妹子，有说有笑。</p>
+<p>编译完成后你的目录应该是下面那个样子：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">--- FFmpegAndroid</span><br><span class="line">    |-- ffmpeg</span><br><span class="line">    |-- x264</span><br><span class="line">    |-- build</span><br><span class="line">        |-- build_ffmpeg.sh</span><br><span class="line">        |-- build_x264.sh</span><br><span class="line">        |-- lib</span><br><span class="line">            |-- ffmpeg&#x2F;armv7-a</span><br><span class="line">                |-- include (ffmpeg so库的头文件)</span><br><span class="line">                |-- lib (ffmpeg so库)</span><br><span class="line">                    |-- libavcodec-57.so</span><br><span class="line">                    |-- libavdevice-57.so</span><br><span class="line">                    |-- libavcodec-57.so</span><br><span class="line">                    |-- libavfilter-6.so</span><br><span class="line">                    |-- libavformat-57.so</span><br><span class="line">                    |-- libavresample-3.so</span><br><span class="line">                    |-- libavutil-55.so</span><br><span class="line">                    |-- libpostproc-54.so</span><br><span class="line">                    |-- libresample-2.so</span><br><span class="line">                    |-- libswscale-4.so</span><br><span class="line">            |-- x264 (x264的静态库和头文件)</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>后面的版本号不一样没关系，这由 <code>ffmpeg</code> 版本决定的</p>
+</blockquote>
+<p>库编译完了，这些 so 库就是在 Android 可用的动态库，接下来就可以准备 JNI 编程了</p>
+<h1 id="三、在-Android-里使用-FFmpeg"><a href="#三、在-Android-里使用-FFmpeg" class="headerlink" title="三、在 Android 里使用 FFmpeg"></a>三、在 Android 里使用 FFmpeg</h1><p>前面已经把 <code>FFmpeg</code> 各个核心库编译出来了，但是我肯定不会在里面直接用核心库内的函数来用，<code>ffmpeg</code> 本来是一个在 pc 端的命令，命令里面可以填写各种参数，比如 <code>ffmpeg -i a.mp4 -c:v x264 -c:a aac b.mp4</code>，就是把 a.mp4 用 <code>x264</code>(视频)、<code>aac</code>(音频) 编码成 <code>b.mp4</code>。</p>
+<p><code>ffmpeg</code> 是由 <code>ffmpeg.c</code> 编译出来的，想要在 Android 里面用 <code>ffmpeg</code> 命令，只要修改 <code>ffmpeg.c</code> 里面的 main 函数，比如修改成 <code>int run_ffmpeg_command(int args, char **argv)</code>，然后用 JNI 暴露给 java 调用，就可以在 Android 使用 <code>ffmpeg</code> 命令了</p>
+<p>在 FFmpegAndroid 建立一个 Android 工程，然后新建一个 ffmpeg 的 lib module<br>对于 NDK 开发，AndroidStudio 2.2 以后就有较好的支持，直接修改支持库的 build.gradle 文件</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">apply plugin: <span class="string">&#x27;com.android.library&#x27;</span></span><br><span class="line"></span><br><span class="line">android &#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    defaultConfig &#123;</span><br><span class="line">        ...</span><br><span class="line">        <span class="comment">// 启用 c++ 支持</span></span><br><span class="line">        externalNativeBuild &#123;</span><br><span class="line">            cmake &#123;</span><br><span class="line">                cppFlags <span class="string">&quot;-std=c++11&quot;</span></span><br><span class="line">            &#125;</span><br><span class="line">            ndk &#123;</span><br><span class="line">                abiFilters <span class="string">&quot;armeabi-v7a&quot;</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 指定 CMakeList 文件</span></span><br><span class="line">    externalNativeBuild &#123;</span><br><span class="line">        cmake &#123;</span><br><span class="line">            path <span class="string">&quot;CMakeLists.txt&quot;</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这样 lib module 就支持 c++ 了，方便吧！比以前的 Android.mk 不知道方便多少</p>
+<p>然后在模块的 <code>src/main</code> 下面新建一个 <code>cpp</code> 目录，用于存放 c++ 代码，从<code>ffmpeg</code>拷贝以下文件:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">cmdutils_common_opts.h</span><br><span class="line">cmdutils.c</span><br><span class="line">cmdutils.h</span><br><span class="line">config.h</span><br><span class="line">ffmpeg_filter.c</span><br><span class="line">ffmpeg_opt.c</span><br><span class="line">ffmpeg-lib.c</span><br><span class="line">ffmpeg.c</span><br><span class="line">ffmpeg.h</span><br></pre></td></tr></table></figure>
+
+<p>然后在 CMakeList.txt 里面配置这些文件，好让 AndroidStudio 认识它们</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br></pre></td><td class="code"><pre><span class="line"># For more information about using CMake with Android Studio, read the</span><br><span class="line"># documentation: https:&#x2F;&#x2F;d.android.com&#x2F;studio&#x2F;projects&#x2F;add-native-code.html</span><br><span class="line"></span><br><span class="line"># Sets the minimum version of CMake required to build the native library.</span><br><span class="line"></span><br><span class="line">cmake_minimum_required(VERSION 3.4.1)</span><br><span class="line"></span><br><span class="line"># Creates and names a library, sets it as either STATIC</span><br><span class="line"># or SHARED, and provides the relative paths to its source code.</span><br><span class="line"># You can define multiple libraries, and CMake builds them for you.</span><br><span class="line"># Gradle automatically packages shared libraries with your APK.</span><br><span class="line"></span><br><span class="line">add_library( # Sets the name of the library.</span><br><span class="line">            ffmpeg-lib</span><br><span class="line"></span><br><span class="line">            # Sets the library as a shared library.</span><br><span class="line">            SHARED</span><br><span class="line"></span><br><span class="line">            # Provides a relative path to your source file(s).</span><br><span class="line">             src&#x2F;main&#x2F;cpp&#x2F;cmdutils.c</span><br><span class="line">             src&#x2F;main&#x2F;cpp&#x2F;ffmpeg.c</span><br><span class="line">             src&#x2F;main&#x2F;cpp&#x2F;ffmpeg_filter.c</span><br><span class="line">             src&#x2F;main&#x2F;cpp&#x2F;ffmpeg_opt.c</span><br><span class="line">            # 此文件是用于暴露 ffmpeg.c 的 main 函数用</span><br><span class="line">             src&#x2F;main&#x2F;cpp&#x2F;ffmpeg-lib.c)</span><br><span class="line"></span><br><span class="line">set(FFMPEG_LIB_DIR &#x2F;Users&#x2F;qigengxin&#x2F;Documents&#x2F;Github&#x2F;FFmpegAndroid&#x2F;build&#x2F;lib&#x2F;ffmpeg&#x2F;armv7-a&#x2F;lib)</span><br><span class="line"></span><br><span class="line">add_library(</span><br><span class="line">    avcodec</span><br><span class="line">    SHARED</span><br><span class="line">    IMPORTED</span><br><span class="line">)</span><br><span class="line">set_target_properties(</span><br><span class="line">    avcodec</span><br><span class="line">    PROPERTIES IMPORTED_LOCATION</span><br><span class="line">    $&#123;FFMPEG_LIB_DIR&#125;&#x2F;libavcodec-57.so</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">add_library(</span><br><span class="line">    avdevice</span><br><span class="line">    SHARED</span><br><span class="line">    IMPORTED</span><br><span class="line">)</span><br><span class="line">set_target_properties(</span><br><span class="line">    avdevice</span><br><span class="line">    PROPERTIES IMPORTED_LOCATION</span><br><span class="line">    $&#123;FFMPEG_LIB_DIR&#125;&#x2F;libavdevice-57.so</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">add_library(</span><br><span class="line">    avfilter</span><br><span class="line">    SHARED</span><br><span class="line">    IMPORTED</span><br><span class="line">)</span><br><span class="line">set_target_properties(</span><br><span class="line">    avfilter</span><br><span class="line">    PROPERTIES IMPORTED_LOCATION</span><br><span class="line">    $&#123;FFMPEG_LIB_DIR&#125;&#x2F;libavfilter-6.so</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">add_library(</span><br><span class="line">    avformat</span><br><span class="line">    SHARED</span><br><span class="line">    IMPORTED</span><br><span class="line">)</span><br><span class="line">set_target_properties(</span><br><span class="line">    avformat</span><br><span class="line">    PROPERTIES IMPORTED_LOCATION</span><br><span class="line">    $&#123;FFMPEG_LIB_DIR&#125;&#x2F;libavformat-57.so</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">add_library(</span><br><span class="line">    avresample</span><br><span class="line">    SHARED</span><br><span class="line">    IMPORTED</span><br><span class="line">)</span><br><span class="line">set_target_properties(</span><br><span class="line">    avresample</span><br><span class="line">    PROPERTIES IMPORTED_LOCATION</span><br><span class="line">    $&#123;FFMPEG_LIB_DIR&#125;&#x2F;libavresample-3.so</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">add_library(</span><br><span class="line">    avutil</span><br><span class="line">    SHARED</span><br><span class="line">    IMPORTED</span><br><span class="line">)</span><br><span class="line">set_target_properties(</span><br><span class="line">    avutil</span><br><span class="line">    PROPERTIES IMPORTED_LOCATION</span><br><span class="line">    $&#123;FFMPEG_LIB_DIR&#125;&#x2F;libavutil-55.so</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">add_library(</span><br><span class="line">    postproc</span><br><span class="line">    SHARED</span><br><span class="line">    IMPORTED</span><br><span class="line">)</span><br><span class="line">set_target_properties(</span><br><span class="line">    postproc</span><br><span class="line">    PROPERTIES IMPORTED_LOCATION</span><br><span class="line">    $&#123;FFMPEG_LIB_DIR&#125;&#x2F;libpostproc-54.so</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">add_library(</span><br><span class="line">    swresample</span><br><span class="line">    SHARED</span><br><span class="line">    IMPORTED</span><br><span class="line">)</span><br><span class="line">set_target_properties(</span><br><span class="line">    swresample</span><br><span class="line">    PROPERTIES IMPORTED_LOCATION</span><br><span class="line">    $&#123;FFMPEG_LIB_DIR&#125;&#x2F;libswresample-2.so</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">add_library(</span><br><span class="line">    swscale</span><br><span class="line">    SHARED</span><br><span class="line">    IMPORTED</span><br><span class="line">)</span><br><span class="line">set_target_properties(</span><br><span class="line">    swscale</span><br><span class="line">    PROPERTIES IMPORTED_LOCATION</span><br><span class="line">    $&#123;FFMPEG_LIB_DIR&#125;&#x2F;libswscale-4.so</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">include_directories(</span><br><span class="line">    ..&#x2F;..&#x2F;ffmpeg</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"># Searches for a specified prebuilt library and stores the path as a</span><br><span class="line"># variable. Because CMake includes system libraries in the search path by</span><br><span class="line"># default, you only need to specify the name of the public NDK library</span><br><span class="line"># you want to add. CMake verifies that the library exists before</span><br><span class="line"># completing its build.</span><br><span class="line"></span><br><span class="line">find_library( # Sets the name of the path variable.</span><br><span class="line">            log-lib</span><br><span class="line"></span><br><span class="line">            # Specifies the name of the NDK library that</span><br><span class="line">            # you want CMake to locate.</span><br><span class="line">            log )</span><br><span class="line"></span><br><span class="line"># Specifies libraries CMake should link to your target library. You</span><br><span class="line"># can link multiple libraries, such as libraries you define in this</span><br><span class="line"># build script, prebuilt third-party libraries, or system libraries.</span><br><span class="line">target_link_libraries( # Specifies the target library.</span><br><span class="line">            ffmpeg-lib</span><br><span class="line">            avcodec</span><br><span class="line">            avutil</span><br><span class="line">            avfilter</span><br><span class="line">            swscale</span><br><span class="line">            swresample</span><br><span class="line">            avresample</span><br><span class="line">            postproc</span><br><span class="line">            avformat</span><br><span class="line">            avdevice</span><br><span class="line"></span><br><span class="line">            # Links the target library to the log library</span><br><span class="line">            # included in the NDK.</span><br><span class="line">            $&#123;log-lib&#125; )</span><br></pre></td></tr></table></figure>
+
+<p>刷新下 gradle，就可以写 c++ 代码了。先看下 <code>ffmpeg.c</code> 这个文件，原先的指令其实调用的就是 main 函数，我们先把 main 函数改成自己自定义的函数 <code>run_ffmpeg_command</code>:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">run_ffmpeg_command</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> **argv)</span></span>&#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>改了以后，我们就可以调用 <code>run_ffmpeg_command</code> 然后传入参数，相当于在 pc 执行 <code>ffmpeg</code> 命令。不过现在还不能执行，这是个坑点，仔细看 <code>run_ffmpeg_command</code> 函数，在程序结束的时候，或者中途出现错误的时候，都会调用 <code>exit_program(int)</code>，这个函数:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">run_ffmpeg_command</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> **argv)</span></span>&#123;</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* parse options and open all input/output files */</span></span><br><span class="line">    ret = ffmpeg_parse_options(argc, argv);</span><br><span class="line">    <span class="keyword">if</span> (ret &lt; <span class="number">0</span>)&#123;</span><br><span class="line">        exit_program(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (nb_output_files &lt;= <span class="number">0</span> &amp;&amp; nb_input_files == <span class="number">0</span>) &#123;</span><br><span class="line">        show_usage();</span><br><span class="line">        av_log(<span class="literal">NULL</span>, AV_LOG_WARNING, <span class="string">&quot;Use -h to get full help or, even better, run &#x27;man %s&#x27;\n&quot;</span>, program_name);</span><br><span class="line">        exit_program(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    exit_program(received_nb_signals ? <span class="number">255</span> : main_return_code);</span><br><span class="line">    <span class="keyword">return</span> main_return_code;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>exit_program(int)</code> 函数是什么，跳过去看一下发现里面就是清理资源然后 <code>exit(int)</code>，这里就要注意这个 exit 函数了，除非我们是多进程方式调用 <code>run_ffmpeg_command</code>，如果我们在 app 的进程调用，执行了 exit 就会结束 app 的进程！</p>
+<p>这不是我想看到的，最好的方法是另开一个进程调用，但是这样就涉及到了进程间的通信问题，麻烦，不想写！反正只是跑一个压缩指令嘛，直接改 <code>ffmpeg.c</code>，首先把 <code>exit(int)</code> 函数给注释掉，然后返回一个 code，<code>run_ffmpeg_command</code> 函数里面只要涉及到 <code>exit_program(int)</code> 函数调用的地方都写成 <code>return exit_program(int)</code>，不过要注意，有如下几个坑点：</p>
+<h3 id="修改-ffmpeg-c-坑点一"><a href="#修改-ffmpeg-c-坑点一" class="headerlink" title="修改 ffmpeg.c 坑点一"></a>修改 ffmpeg.c 坑点一</h3><p>调试的时候发现 <code>return exit_program(int);</code> 语句并不会结束当前函数并返回，而是继续往下执行了，当时一脸楞逼，我艹！！这是什么鬼？？为什么我 return 了没有用？找了半天后才发现是 <code>exit_program(int)</code> 这个函数声明的锅！看下面这个函数的声明:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Wraps exit with a program-specific cleanup routine.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">exit_program</span><span class="params">(<span class="keyword">int</span> ret)</span> av_noreturn</span>;</span><br></pre></td></tr></table></figure>
+<p>函数后面有个奇怪的 <code>av_noreturn</code> 声明，网上查了一下才知道，这个是给编译器的注解，这货的锅，去掉就好了。</p>
+<h3 id="修改-ffmpeg-c-坑点二"><a href="#修改-ffmpeg-c-坑点二" class="headerlink" title="修改 ffmpeg.c 坑点二"></a>修改 ffmpeg.c 坑点二</h3><p>其实 <code>exit_program(int)</code> 这个函数不只是在 <code>run_ffmpeg_command</code> 里面调用，其它各种函数里面都有，如果都要修改的话必须一层一层的 return (C语言里面没有异常啊)，很麻烦，但是如果没有改好的话就很容易 crash，这是个要解决的问题，首先 <code>run_ffmpeg_command</code> 里面的 <code>exit_program</code> 都要改成 return 方式</p>
+<p>然后因为最终目的是压缩视频，参数集是固定的，所以不用考虑编码不支持，或参数匹配不到的情况，只需要考虑文件读写的问题，就是输入文件不存在的时候，或者输出路径不合法的时候，不能让程序异常退出，而是返回错误码，这个需要改 <code>ffmpeg_opt.c</code> 这个文件<br><strong>ffmpeg_opt.c</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">open_files</span><span class="params">(OptionGroupList *l, <span class="keyword">const</span> <span class="keyword">char</span> *inout, <span class="keyword">int</span> (*open_file)(OptionsContext*, <span class="keyword">const</span> <span class="keyword">char</span>*))</span></span>&#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">open_input_file</span><span class="params">(OptionsContext *o, <span class="keyword">const</span> <span class="keyword">char</span> *filename)</span></span>&#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">open_outout_file</span><span class="params">(OptionsContext *o, <span class="keyword">const</span> <span class="keyword">char</span> *filename)</span></span>&#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">init_output_filter</span><span class="params">(OutputFilter *ofilter, OptionsContext *o, AVFormatContext *oc)</span></span>&#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>目前我项目中就只改了这几个函数内的 <code>exit_program</code>，测试可行，也可以参考本项目的代码，链接在文末</p>
+<p>最后就是暴露 <code>run_ffmpeg_command</code> 方法给 java 调用了，这个和普通的 JNI 编程一样，建一个 native 的方法，创建 cpp 代码。。。没啥东西，直接上代码</p>
+<p><strong>FFmpegNativeBridge</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">FFmpegNativeBridge</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.loadLibrary(<span class="string">&quot;ffmpeg-lib&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 执行指令</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> command</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> 命令返回结果</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">native</span> <span class="keyword">int</span> <span class="title">runCommand</span><span class="params">(String[] command)</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>ffmpeg-lib.c</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;jni.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&quot;ffmpeg.h&quot;</span></span></span><br><span class="line"></span><br><span class="line">JNIEXPORT jint JNICALL</span><br><span class="line">Java_org_voiddog_ffmpeg_FFmpegNativeBridge_runCommand(JNIEnv *env, jclass type,</span><br><span class="line">                                                      jobjectArray command) &#123;</span><br><span class="line">    <span class="keyword">int</span> argc = (*env)-&gt;GetArrayLength(env, command);</span><br><span class="line">    <span class="keyword">char</span> *argv[argc];</span><br><span class="line">    jstring jsArray[argc];</span><br><span class="line">    <span class="keyword">int</span> i;</span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; argc; i++) &#123;</span><br><span class="line">        jsArray[i] = (jstring) (*env)-&gt;GetObjectArrayElement(env, command, i);</span><br><span class="line">        argv[i] = (<span class="keyword">char</span> *) (*env)-&gt;GetStringUTFChars(env, jsArray[i], <span class="number">0</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">int</span> ret = run_ffmpeg_command(argc,argv);</span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; argc; ++i) &#123;</span><br><span class="line">        (*env)-&gt;ReleaseStringUTFChars(env, jsArray[i], argv[i]);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>运行前先需要把 <code>ffmpeg</code> 编译出来的一堆 <code>so</code> 库放到 <code>jniLibs</code> 内，不然运行的时候会出现动态库无法加载的异常。最后就可以在 <code>Android</code> 内用 <code>ffmpeg</code> 的命令了:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> ret = FFmpegNativeBridge.runCommand(<span class="keyword">new</span> String[]&#123;<span class="string">&quot;ffmpeg&quot;</span>,</span><br><span class="line">                   <span class="string">&quot;-i&quot;</span>, <span class="string">&quot;/storage/emulated/0/DCIM/Camera/VID_20170527_175421.mp4&quot;</span>,</span><br><span class="line">                   <span class="string">&quot;-y&quot;</span>,</span><br><span class="line">                   <span class="string">&quot;-c:v&quot;</span>, <span class="string">&quot;libx264&quot;</span>,</span><br><span class="line">                   <span class="string">&quot;-c:a&quot;</span>, <span class="string">&quot;aac&quot;</span>,</span><br><span class="line">                   <span class="string">&quot;-vf&quot;</span>, <span class="string">&quot;scale=480:-2&quot;</span>,</span><br><span class="line">                   <span class="string">&quot;-preset&quot;</span>, <span class="string">&quot;ultrafast&quot;</span>,</span><br><span class="line">                   <span class="string">&quot;-crf&quot;</span>, <span class="string">&quot;28&quot;</span>,</span><br><span class="line">                   <span class="string">&quot;-b:a&quot;</span>, <span class="string">&quot;128k&quot;</span>,</span><br><span class="line">                   <span class="string">&quot;/storage/emulated/0/Download/a.mp4&quot;</span>&#125;);</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>关于这些参数，可以去查 <code>FFmpeg</code> 的<a target="_blank" rel="noopener" href="https://ffmpeg.org/">官网</a>，本项目源码地址<a target="_blank" rel="noopener" href="https://github.com/voiddog/FFmpeg-Android">Github</a></p>
+</blockquote>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Android/" rel="tag"># Android</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/1547471396/" rel="prev" title="如何优雅地在Android上实现iOS的图片预览">
+                  <i class="fa fa-chevron-left"></i> 如何优雅地在Android上实现iOS的图片预览
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/1547471896/" rel="next" title="给FFmpeg加上MediaCodec和线程支持">
+                  给FFmpeg加上MediaCodec和线程支持 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">VoidDog</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

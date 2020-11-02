@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"blog.voiddog.org","root":"/","scheme":"Pisces","version":"8.0.0-rc.5","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false};
+  </script>
+
+  <meta name="description" content="Bitmap 是内存优化逃不了的一个东西，本文探讨下，Bitmap 中的 density 到底是什么东西，它是如何影响到内存的使用的 先看下 density 的文档注释 12345678910111213141516&#x2F;**  * &lt;p&gt;Returns the density for this bitmap.&lt;&#x2F;p&gt;  *  * &lt;p&gt;The default de">
+<meta property="og:type" content="article">
+<meta property="og:title" content="解析Bitmap的density">
+<meta property="og:url" content="http://blog.voiddog.org/1547471996/index.html">
+<meta property="og:site_name" content="爆裂吧现实">
+<meta property="og:description" content="Bitmap 是内存优化逃不了的一个东西，本文探讨下，Bitmap 中的 density 到底是什么东西，它是如何影响到内存的使用的 先看下 density 的文档注释 12345678910111213141516&#x2F;**  * &lt;p&gt;Returns the density for this bitmap.&lt;&#x2F;p&gt;  *  * &lt;p&gt;The default de">
+<meta property="og:locale">
+<meta property="og:image" content="https://i.imgur.com/rk1mrxe.png">
+<meta property="article:published_time" content="2018-04-01T19:25:55.000Z">
+<meta property="article:modified_time" content="2020-11-02T10:15:43.961Z">
+<meta property="article:author" content="VoidDog">
+<meta property="article:tag" content="Android">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/rk1mrxe.png">
+
+
+<link rel="canonical" href="http://blog.voiddog.org/1547471996/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>解析Bitmap的density | 爆裂吧现实</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175543622-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-175543622-1');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">爆裂吧现实</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">不想死就早点睡</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-overview-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="VoidDog"
+      src="https://i.imgur.com/rO7BKq2.png">
+  <p class="site-author-name" itemprop="name">VoidDog</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/voiddog" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/qgx446738721" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;qgx446738721" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.facebook.com/voiddog" title="Facebook → https:&#x2F;&#x2F;www.facebook.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-facebook fa-fw"></i>Facebook</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/voiddog" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-instagram fa-fw"></i>Instagram</a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://blog.voiddog.org/1547471996/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://i.imgur.com/rO7BKq2.png">
+      <meta itemprop="name" content="VoidDog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爆裂吧现实">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          解析Bitmap的density
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-04-01 19:25:55" itemprop="dateCreated datePublished" datetime="2018-04-01T19:25:55+00:00">2018-04-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-11-02 10:15:43" itemprop="dateModified" datetime="2020-11-02T10:15:43+00:00">2020-11-02</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Android/" itemprop="url" rel="index"><span itemprop="name">Android</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>Bitmap 是内存优化逃不了的一个东西，本文探讨下，Bitmap 中的 density 到底是什么东西，它是如何影响到内存的使用的</p>
+<p>先看下 density 的文档注释</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">  * &lt;p&gt;Returns the density for this bitmap.&lt;/p&gt;</span></span><br><span class="line"><span class="comment">  *</span></span><br><span class="line"><span class="comment">  * &lt;p&gt;The default density is the same density as the current display,</span></span><br><span class="line"><span class="comment">  * unless the current application does not support different screen</span></span><br><span class="line"><span class="comment">  * densities in which case it is</span></span><br><span class="line"><span class="comment">  * &#123;<span class="doctag">@link</span> android.util.DisplayMetrics#DENSITY_DEFAULT&#125;.  Note that</span></span><br><span class="line"><span class="comment">  * compatibility mode is determined by the application that was initially</span></span><br><span class="line"><span class="comment">  * loaded into a process -- applications that share the same process should</span></span><br><span class="line"><span class="comment">  * all have the same compatibility, or ensure they explicitly set the</span></span><br><span class="line"><span class="comment">  * density of their bitmaps appropriately.&lt;/p&gt;</span></span><br><span class="line"><span class="comment">  *</span></span><br><span class="line"><span class="comment">  * <span class="doctag">@return</span> A scaling factor of the default density or &#123;<span class="doctag">@link</span> #DENSITY_NONE&#125;</span></span><br><span class="line"><span class="comment">  *         if the scaling factor is unknown.</span></span><br><span class="line"><span class="comment">  *</span></span><br><span class="line"><span class="comment">  */</span></span><br></pre></td></tr></table></figure>
+
+<p>简单来说 density 是用来绘制缩放用的，默认情况下的 density 就是屏幕的 density（<code>resources.displayMetrics.densityDpi</code>），假如我修改了一张 Bitmap 的 density，那么图片的显示应该会发生缩放，写个简单的 demo 验证下</p>
+<a id="more"></a>
+
+<figure class="highlight kotlin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> bitmap = BitmapFactory.decodeResource(resources, R.drawable.male_xhdpi)</span><br><span class="line">Log.i(<span class="string">&quot;Bitmap&quot;</span>, <span class="string">&quot;display&#x27;s density: <span class="subst">$&#123;resources.displayMetrics.densityDpi&#125;</span>&quot;</span>)</span><br><span class="line">Log.i(<span class="string">&quot;Bitmap&quot;</span>, <span class="string">&quot;source bitmap&#x27;s density: <span class="subst">$&#123;bitmap.density&#125;</span>&quot;</span>)</span><br><span class="line">Log.i(<span class="string">&quot;Bitmap&quot;</span>, <span class="string">&quot;source bitmap width: <span class="subst">$&#123;bitmap.width&#125;</span>, height: <span class="subst">$&#123;bitmap.height&#125;</span>&quot;</span>)</span><br><span class="line">img_src.setImageBitmap(bitmap)</span><br><span class="line"></span><br><span class="line"><span class="keyword">val</span> smallBitmap = bitmap.copy(bitmap.config, bitmap.isMutable)</span><br><span class="line">Log.i(<span class="string">&quot;Bitmap&quot;</span>, <span class="string">&quot;smallBitmap width: <span class="subst">$&#123;smallBitmap.width&#125;</span>, height: <span class="subst">$&#123;smallBitmap.height&#125;</span>&quot;</span>)</span><br><span class="line">smallBitmap.density = bitmap.density * <span class="number">2</span></span><br><span class="line">img_small.setImageBitmap(smallBitmap)</span><br><span class="line"></span><br><span class="line"><span class="keyword">val</span> bigBitmap = bitmap.copy(bitmap.config, bitmap.isMutable)</span><br><span class="line">Log.i(<span class="string">&quot;Bitmap&quot;</span>, <span class="string">&quot;bigBitmap width: <span class="subst">$&#123;bigBitmap.width&#125;</span>, height: <span class="subst">$&#123;bigBitmap.height&#125;</span>&quot;</span>)</span><br><span class="line">bigBitmap.density = bitmap.density / <span class="number">2</span></span><br><span class="line">img_big.setImageBitmap(bigBitmap)</span><br></pre></td></tr></table></figure>
+
+<p>界面<br><img src="https://i.imgur.com/rk1mrxe.png" alt="Imgur"></p>
+<p>输出：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">display&#39;s density: 420</span><br><span class="line">source bitmap&#39;s density: 420</span><br><span class="line">source bitmap width: 360, height: 360</span><br><span class="line">smallBitmap width: 360, height: 360</span><br><span class="line">bigBitmap width: 360, height: 360</span><br></pre></td></tr></table></figure>
+
+<p>从输出可以看出，Bitmap 的 density 只是会影响到显示而已，并不会影响到 Bitmap 本身的大小，所以这个属性不会影响到内存占用过多的问题</p>
+<blockquote>
+<p>界面中可以看出，density 导致图像的缩小一倍和放大一倍</p>
+</blockquote>
+<p>那么影响内存的是什么呢，我们知道把一张 xxhdpi 的图片放到 xhdpi 中是不行的，这样会导致图片扩大，这里的扩大是指图片本身内存占用的扩大，而不是显示上面的，跟踪下 <code>BitmapFactory.decodeResource(resources, R.drawable.male_xhdpi)</code> 的代码调用，跟踪到 <code>decodeResourceStream()</code> 函数的时候，发现了 density 的身影</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Bitmap <span class="title">decodeResourceStream</span><span class="params">(Resources res, TypedValue value,</span></span></span><br><span class="line"><span class="function"><span class="params">        InputStream is, Rect pad, Options opts)</span> </span>&#123;</span><br><span class="line">    validate(opts);</span><br><span class="line">    <span class="keyword">if</span> (opts == <span class="keyword">null</span>) &#123;</span><br><span class="line">        opts = <span class="keyword">new</span> Options();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (opts.inDensity == <span class="number">0</span> &amp;&amp; value != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">final</span> <span class="keyword">int</span> density = value.density;</span><br><span class="line">        <span class="keyword">if</span> (density == TypedValue.DENSITY_DEFAULT) &#123;</span><br><span class="line">            opts.inDensity = DisplayMetrics.DENSITY_DEFAULT;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (density != TypedValue.DENSITY_NONE) &#123;</span><br><span class="line">            opts.inDensity = density;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (opts.inTargetDensity == <span class="number">0</span> &amp;&amp; res != <span class="keyword">null</span>) &#123;</span><br><span class="line">        opts.inTargetDensity = res.getDisplayMetrics().densityDpi;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> decodeStream(is, pad, opts);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>发现 Options 里面有两个属性 （<code>inDensity</code>，<code>inTargetDensity</code>），<code>inTargetDensity</code> 被赋值成了当前设备的像素密度，那么 <code>inDensity</code> 被赋值成啥了呢？代码中看是赋值成了参数 value 的 density，回溯函数看看 value.density 是哪里来的</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Bitmap <span class="title">decodeResource</span><span class="params">(Resources res, <span class="keyword">int</span> id, Options opts)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">final</span> TypedValue value = <span class="keyword">new</span> TypedValue();</span><br><span class="line">        is = res.openRawResource(id, value);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>TypeValue 的值只有在这里有写入现象，猜测是根据 resource 的等级来赋值的，比如 xhdpi 就是 320dpi，xxhdpi 就是 480dpi（这些数值可以在<a target="_blank" rel="noopener" href="https://developer.android.com/guide/practices/screens_support.html?hl=zh-cn">官网</a>查看），写段代码测试下</p>
+<figure class="highlight kotlin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> xhdpiValue = TypedValue()</span><br><span class="line">resources.openRawResource(R.drawable.male_xhdpi, xhdpiValue)</span><br><span class="line">Log.i(<span class="string">&quot;Bitmap&quot;</span>, <span class="string">&quot;xhdpi&#x27;s density: <span class="subst">$&#123;xhdpiValue.density&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">val</span> xxhdpiValue = TypedValue()</span><br><span class="line">resources.openRawResource(R.drawable.male_xxhdpi, xxhdpiValue)</span><br><span class="line">Log.i(<span class="string">&quot;Bitmap&quot;</span>, <span class="string">&quot;xhdpi&#x27;s density: <span class="subst">$&#123;xxhdpiValue.density&#125;</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>输出</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">xhdpi&#39;s density: 320</span><br><span class="line">xxhdpi&#39;s density: 480</span><br></pre></td></tr></table></figure>
+
+<p>恩，看来这个推测很准确</p>
+<p>既然知道了这两个数值是什么意义，那么继续跟踪代码，跟踪后发现最后调用的是一个 native 函数</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">native</span> Bitmap <span class="title">nativeDecodeStream</span><span class="params">(InputStream is, <span class="keyword">byte</span>[] storage,</span></span></span><br><span class="line"><span class="function"><span class="params">            Rect padding, Options opts)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>去 <a target="_blank" rel="noopener" href="http://androidxref.com/7.1.2_r36/xref/frameworks/base/core/jni/android/graphics/BitmapFactory.cpp">androidXRef</a> 看下这部分的代码</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> jobject <span class="title">nativeDecodeStream</span><span class="params">(JNIEnv* env, jobject clazz, jobject is</span></span></span><br><span class="line"><span class="function"><span class="params">    , jbyteArray storage, jobject padding, jobject options)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    jobject bitmap = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="function"><span class="built_in">std</span>::<span class="built_in">unique_ptr</span>&lt;SkStream&gt; <span class="title">stream</span><span class="params">(CreateJavaInputStreamAdaptor(env, is, storage))</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (stream.get()) &#123;</span><br><span class="line">        <span class="function"><span class="built_in">std</span>::<span class="built_in">unique_ptr</span>&lt;SkStreamRewindable&gt; <span class="title">bufferedStream</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">                SkFrontBufferedStream::Create(stream.release(), SkCodec::MinBufferedBytesNeeded()))</span></span>;</span><br><span class="line">        SkASSERT(bufferedStream.get() != <span class="literal">NULL</span>);</span><br><span class="line">        <span class="comment">// 在这里进行解码</span></span><br><span class="line">        bitmap = doDecode(env, bufferedStream.release(), padding, options);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> bitmap;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 解码函数</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> jobject <span class="title">doDecode</span><span class="params">(JNIEnv* env, SkStreamRewindable* stream</span></span></span><br><span class="line"><span class="function"><span class="params">    , jobject padding, jobject options)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// ... 忽略部分代码</span></span><br><span class="line">    <span class="keyword">if</span> (env-&gt;GetBooleanField(options, gOptions_scaledFieldID)) &#123;</span><br><span class="line">        <span class="keyword">const</span> <span class="keyword">int</span> density = env-&gt;GetIntField(options, gOptions_densityFieldID);</span><br><span class="line">        <span class="keyword">const</span> <span class="keyword">int</span> targetDensity = env-&gt;GetIntField(options, gOptions_targetDensityFieldID);</span><br><span class="line">        <span class="keyword">const</span> <span class="keyword">int</span> screenDensity = env-&gt;GetIntField(options, gOptions_screenDensityFieldID);</span><br><span class="line">        <span class="keyword">if</span> (density != <span class="number">0</span> &amp;&amp; targetDensity != <span class="number">0</span> &amp;&amp; density != screenDensity) &#123;</span><br><span class="line">            <span class="comment">// 这里通过 density 计算缩放数值</span></span><br><span class="line">            scale = (<span class="keyword">float</span>) targetDensity / density;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">// Scale is necessary due to density differences.</span></span><br><span class="line">    <span class="keyword">if</span> (scale != <span class="number">1.0f</span>) &#123;</span><br><span class="line">        willScale = <span class="literal">true</span>;</span><br><span class="line">        <span class="comment">// 计算出缩放后的 width 和 height</span></span><br><span class="line">        scaledWidth = <span class="keyword">static_cast</span>&lt;<span class="keyword">int</span>&gt;(scaledWidth * scale + <span class="number">0.5f</span>);</span><br><span class="line">        scaledHeight = <span class="keyword">static_cast</span>&lt;<span class="keyword">int</span>&gt;(scaledHeight * scale + <span class="number">0.5f</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="keyword">if</span> (willScale) &#123;</span><br><span class="line">        <span class="comment">// 计算需要缩放的比例</span></span><br><span class="line">        <span class="keyword">const</span> <span class="keyword">float</span> sx = scaledWidth / <span class="keyword">float</span>(decodingBitmap.width());</span><br><span class="line">        <span class="keyword">const</span> <span class="keyword">float</span> sy = scaledHeight / <span class="keyword">float</span>(decodingBitmap.height());</span><br><span class="line">        <span class="comment">// ...</span></span><br><span class="line">        <span class="comment">// 可以看出把解码的 Bitmap 通过 canvas 缩放后绘制到 outBitmap，用于返回</span></span><br><span class="line">        <span class="function">SkCanvas <span class="title">canvas</span><span class="params">(outputBitmap)</span></span>;</span><br><span class="line">        canvas.scale(sx, sy);</span><br><span class="line">        canvas.drawBitmap(decodingBitmap, <span class="number">0.0f</span>, <span class="number">0.0f</span>, &amp;paint);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>忽略了多余的代码，分析部分看中文注释</p>
+</blockquote>
+<p>可以在代码中看到，Options 的 <code>inDensity</code> 和 <code>inTargetDensity</code> 是用作 Bitmap 的缩放用的，此缩放并不是视觉上的缩放，而是缩放了 Bitmap 的真正尺寸，那么这里就需要注意内存上的消耗了，<strong>不要把 xxhdpi 的图片放到 xhdpi 下面</strong></p>
+<blockquote>
+<p>对于上面的 <code>inScreenDensity</code>，在 <code>decodeResource</code> 的流程里面并没有发现它的赋值过程，那么它肯定是初始值 0，查看了下注释，他表示当前 display 设备的 density，如果 <code>inScreenDensity == density</code> 就不会对图片进行缩放</p>
+</blockquote>
+<p>总结下过程：<br>通过 resource 获取 Bitmap 的时候，先根据资源文件获得 <code>inDensity</code> ，<code>inTargetDensity</code> 就是当前设备的 density，图片解码后在通过 canvas 缩放 <code>inTargetDensity / inDensity</code> 个倍数，就获得了缩放尺寸后的 Bitmap</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Android/" rel="tag"># Android</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/1547471096/" rel="prev" title="Android Edittext 长按没有弹出上下文菜单">
+                  <i class="fa fa-chevron-left"></i> Android Edittext 长按没有弹出上下文菜单
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/1547471696/" rel="next" title="探索阻尼动画优雅的实现方式">
+                  探索阻尼动画优雅的实现方式 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">VoidDog</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

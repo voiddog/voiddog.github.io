@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"blog.voiddog.org","root":"/","scheme":"Pisces","version":"8.0.0-rc.5","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false};
+  </script>
+
+  <meta name="description" content="简述本文探讨下如何在 Android 上实现阻尼动画，首先 wiki 下阻尼的定义：是指任何振动系统在振动中，由于外界作用（如流体阻力、摩擦力等）和&#x2F;或系统本身固有的原因引起的振动幅度逐渐下降的特性，也就是阻尼系统由两个子系统组成（振子系统、阻力系统），先前写过一篇 如何优雅地在Android上实现iOS的图片预览 ，就是一套阻尼动画的实现  不知道阻尼动画效果的同学可以去玩玩 iOS，iOS 的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="探索阻尼动画优雅的实现方式">
+<meta property="og:url" content="http://blog.voiddog.org/1547471696/index.html">
+<meta property="og:site_name" content="爆裂吧现实">
+<meta property="og:description" content="简述本文探讨下如何在 Android 上实现阻尼动画，首先 wiki 下阻尼的定义：是指任何振动系统在振动中，由于外界作用（如流体阻力、摩擦力等）和&#x2F;或系统本身固有的原因引起的振动幅度逐渐下降的特性，也就是阻尼系统由两个子系统组成（振子系统、阻力系统），先前写过一篇 如何优雅地在Android上实现iOS的图片预览 ，就是一套阻尼动画的实现  不知道阻尼动画效果的同学可以去玩玩 iOS，iOS 的">
+<meta property="og:locale">
+<meta property="og:image" content="https://i.imgur.com/FcckkxH.gif">
+<meta property="og:image" content="https://i.imgur.com/yozNewW.gif">
+<meta property="og:image" content="https://i.imgur.com/N3cVWJ7.gif">
+<meta property="og:image" content="https://i.imgur.com/fLqWj1S.png">
+<meta property="article:published_time" content="2018-04-30T10:47:45.000Z">
+<meta property="article:modified_time" content="2020-11-02T10:15:43.957Z">
+<meta property="article:author" content="VoidDog">
+<meta property="article:tag" content="Android">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/FcckkxH.gif">
+
+
+<link rel="canonical" href="http://blog.voiddog.org/1547471696/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>探索阻尼动画优雅的实现方式 | 爆裂吧现实</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175543622-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-175543622-1');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">爆裂吧现实</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">不想死就早点睡</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AE%80%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">简述</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BD%8D%E7%BD%AE%E7%AA%81%E5%8F%98%E5%8A%A8%E7%94%BB"><span class="nav-number">1.1.</span> <span class="nav-text">位置突变动画</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BD%8D%E7%BD%AE%E4%B8%8D%E7%AA%81%E5%8F%98%E5%8A%A8%E7%94%BB"><span class="nav-number">1.2.</span> <span class="nav-text">位置不突变动画</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%80%9F%E5%BA%A6%E4%B8%8D%E7%AA%81%E5%8F%98%E5%8A%A8%E7%94%BB"><span class="nav-number">1.3.</span> <span class="nav-text">速度不突变动画</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0"><span class="nav-number">2.</span> <span class="nav-text">实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%87%AA%E5%AE%9A%E4%B9%89%E9%98%BB%E5%B0%BC%E7%B3%BB%E7%BB%9F"><span class="nav-number">2.1.</span> <span class="nav-text">自定义阻尼系统</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%80%9F%E7%94%A8-DynamicAnimation"><span class="nav-number">2.2.</span> <span class="nav-text">借用 DynamicAnimation</span></a></li></ol></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="VoidDog"
+      src="https://i.imgur.com/rO7BKq2.png">
+  <p class="site-author-name" itemprop="name">VoidDog</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/voiddog" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/qgx446738721" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;qgx446738721" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.facebook.com/voiddog" title="Facebook → https:&#x2F;&#x2F;www.facebook.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-facebook fa-fw"></i>Facebook</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/voiddog" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-instagram fa-fw"></i>Instagram</a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://blog.voiddog.org/1547471696/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://i.imgur.com/rO7BKq2.png">
+      <meta itemprop="name" content="VoidDog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爆裂吧现实">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          探索阻尼动画优雅的实现方式
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-04-30 10:47:45" itemprop="dateCreated datePublished" datetime="2018-04-30T10:47:45+00:00">2018-04-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-11-02 10:15:43" itemprop="dateModified" datetime="2020-11-02T10:15:43+00:00">2020-11-02</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Android/" itemprop="url" rel="index"><span itemprop="name">Android</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <h3 id="简述"><a href="#简述" class="headerlink" title="简述"></a>简述</h3><p>本文探讨下如何在 Android 上实现阻尼动画，首先 wiki 下阻尼的定义：<strong>是指任何振动系统在振动中，由于外界作用（如流体阻力、摩擦力等）和/或系统本身固有的原因引起的振动幅度逐渐下降的特性</strong>，也就是阻尼系统由两个子系统组成（振子系统、阻力系统），先前写过一篇 <a href="/1547471396/" title="如何优雅地在Android上实现iOS的图片预览">如何优雅地在Android上实现iOS的图片预览</a> ，就是一套阻尼动画的实现</p>
+<blockquote>
+<p>不知道阻尼动画效果的同学可以去玩玩 iOS，iOS 的 UI 系统内置一套物理引擎，几乎所有的滚动界面都有阻尼动画效果（越界回弹）</p>
+</blockquote>
+<p>在讨论阻尼动画之前，我先讲一下本人编写动画的历程，分为 3 个阶段（<strong>位置突变动画，位置不突变动画，速度不突变的动画</strong>）</p>
+<h4 id="位置突变动画"><a href="#位置突变动画" class="headerlink" title="位置突变动画"></a>位置突变动画</h4><p>此动画是 Android 里面最简单的动画，我们平常写的 ValueAnimator 动画、xml 动画，其实都是位置突变的动画，为什么叫它位置突变的动画呢，比如我要把一个 View 渐变出来，那么 alpha 数值应该是从 0 -&gt; 1，但是假如在渐变动画还没有结束的时候（假如刚好播放到 0.5），我又想把 View 给渐隐掉，此时一般会播放一个 1 -&gt; 0 的动画，这里就产生了位置突变效应（从 0.5 突变成了 1），造成的视觉效果就是视图闪动（等同于游戏里面的跳帧）</p>
+<h4 id="位置不突变动画"><a href="#位置不突变动画" class="headerlink" title="位置不突变动画"></a>位置不突变动画</h4><p>在上述动画的基础上，对于第二段的渐隐动画，我不从 1 -&gt; 0 开始变化，我在播放渐隐动画前先获取 View 的透明度(0.5)，然后让动画从 0.5 -&gt; 0 开始变化（视觉上没有了闪动现象）</p>
+<h4 id="速度不突变动画"><a href="#速度不突变动画" class="headerlink" title="速度不突变动画"></a>速度不突变动画</h4><p>位置不突变动画一般都能满足要求了(系统自带的 <code>ViewPropertyAnimator</code> 就是位置不突变动画)，但是为什么 iOS 的动画就看起来这么舒服，而安卓的动画看起来有点死板呢？这边就存在一个速度突变的问题</p>
+<a id="more"></a>
+
+<p><strong>速度突变动画↓</strong><br><img src="https://i.imgur.com/FcckkxH.gif" alt="Imgur"></p>
+<p><strong>速度不突变动画↓</strong><br><img src="https://i.imgur.com/yozNewW.gif" alt="Imgur"></p>
+<blockquote>
+<p>图片来自 <a target="_blank" rel="noopener" href="https://developer.android.com/training/animation/overview">谷歌动画文档</a></p>
+</blockquote>
+<p>我想，应该可以很明显的看出这两者的动画区别，当动画的目标位置发生变化之后，动画1 给人一种非常突兀的感觉，而动画2 给人一种丝一般的顺滑</p>
+<p>速度不突变最理想的编写方式就是引入一套物理引擎，然后基于这套物理引擎开发动画，但是成本很大，这也是为什么 iOS 的动画这么丝滑的原因（内置物理引擎）</p>
+<h3 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h3><p>谷歌大佬也发现了这个问题的，所以它在 support 26 版本中加入了 <code>DynamicAnimation</code>，这是一套基于物理状态的动画系统，顾明思议，他内置了一套简单的物理引擎，它有默认的两个子类实现 <code>SpringAnimation</code>（弹簧动画）、<code>FlingAnimation</code>（滑动动画），下面我就用这两个动画来实现我想要的阻尼动画</p>
+<p>先看一个简单的 demo<br><img src="https://i.imgur.com/N3cVWJ7.gif" alt="Imgur"></p>
+<p>思考一下，如何实现这个动画，最容易想到的就是用系统的 OverScroller，但是此类的定制性比较差，和阻尼效果差别很大。另一种方式就是分段动画，滚动的时候用 Scroller 实现，越界的时候用 ValueAnimator 来实现，这种方式首先编码很麻烦：<strong>至少要分成 3 段动画（滑动 -&gt; 越界 -&gt; 回弹）</strong>，其次它是一个速度突变的动画，表现上来说总会给人一种违和感</p>
+<h4 id="自定义阻尼系统"><a href="#自定义阻尼系统" class="headerlink" title="自定义阻尼系统"></a>自定义阻尼系统</h4><p>此方案就是自己模拟物理引擎，理论上可以实现物理引擎所支持的动画，但是需要了解一定的物理知识和数学知识，代码实现繁琐，但是很有意思，有兴趣的同学可以看我之前写的一篇文章 <a href="/1547471396/" title="如何优雅地在Android上实现iOS的图片预览">如何优雅地在Android上实现iOS的图片预览</a></p>
+<h4 id="借用-DynamicAnimation"><a href="#借用-DynamicAnimation" class="headerlink" title="借用 DynamicAnimation"></a>借用 <code>DynamicAnimation</code></h4><p>这个是谷歌为了解决物理动画而出的一个 support 库，对它的描述叫 <strong>Physics-based motion</strong>。它的其中一个子类 <code>SpringAnimation</code> 其实就是弹簧动画，也就是我想要的阻尼系统。但是要实现 demo 中的动画，只有 <code>SpringAnimation</code> 是不够的，还需要一个 fling 动画，用于滑动，刚好 <code>DynamicAnimation</code> 还有一个子类就是 <code>FlingAnimation</code></p>
+<p>那么接下来的问题就是如何结合这两个动画，撸出一个 <code>SpringFlingAnimation</code></p>
+<p>物理动画的实现方式，无非就是逐帧计算，每一帧根据当前的 （位置、速度、加速度）计算出下一帧的（位置、速度、加速度），所以我只需要在越界的时候用 <code>SpringAnimation</code> 的逻辑去计算，非越界的时候用 <code>FlingAnimation</code> 的逻辑去计算，就可以达到我们想要的效果</p>
+<p><strong>例:</strong><br><img src="https://i.imgur.com/fLqWj1S.png" alt="Imgur"></p>
+<blockquote>
+<p>如图所示，黑框是父布局，可以看做一个 ScrollView，橘色的框为内部的子 View，1 的时候上滑采用 <code>FlingAnimation</code> 去计算帧，2 的时候因为越界了所以用 <code>SpringAnimaiton</code> 的逻辑来计算帧，3 的时候继续采用 <code>FlingAnimation</code></p>
+</blockquote>
+<p>思路理清楚后是不是感觉很简单，其实实现方式也很简单，<code>SpringAnimation</code> 和 <code>FlingAnimation</code> 里面的代码本来就没多少，阻尼系统的逻辑运算都封装在 <code>SpringForce</code> 里面了，我们只需要继承自 <code>DynamicAnimation</code>，复合一下两个动画的计算帧逻辑就可以了</p>
+<blockquote>
+<p>PS: <code>DynamicAnimation</code> 的虚方法都是包权限的，也就是只有包权限的类才可以继承</p>
+</blockquote>
+<p>具体实现可以看我的 Github 项目 <a target="_blank" rel="noopener" href="https://github.com/voiddog/DampingSystem/blob/master/damp/src/main/java/android/support/animation/SpringFlingAnimation.java">SpringFlingAnimation.java</a>，上述 demo 的简单实现代码 <a target="_blank" rel="noopener" href="https://github.com/voiddog/DampingSystem/blob/master/app/src/main/java/org/voiddog/android/sample/SampleDampNestedScrollView.java">SampleDampNestedScrollView.java</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Android/" rel="tag"># Android</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/1547471996/" rel="prev" title="解析Bitmap的density">
+                  <i class="fa fa-chevron-left"></i> 解析Bitmap的density
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/1547471100/" rel="next" title="Flutter入门介绍">
+                  Flutter入门介绍 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">VoidDog</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

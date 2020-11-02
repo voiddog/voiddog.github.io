@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"blog.voiddog.org","root":"/","scheme":"Pisces","version":"8.0.0-rc.5","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false};
+  </script>
+
+  <meta name="description" content="Cocos的事件分发机制，怎么说呢，总感觉有些乱，借此整理一下。先看看与事件分发相关的类。   事件相关的类Event 相关类, 分发事件的中的事件:  Event（基类）, EventCustom（自定义事件）, EventTouch（触摸事件）, EventMouse（鼠标事件）, EventKeyboard（键盘事件）, EventFocus（控件获取焦点事件）, EventAccelera">
+<meta property="og:type" content="article">
+<meta property="og:title" content="事件分发机制源码解析（一）">
+<meta property="og:url" content="http://blog.voiddog.org/1547471102/index.html">
+<meta property="og:site_name" content="爆裂吧现实">
+<meta property="og:description" content="Cocos的事件分发机制，怎么说呢，总感觉有些乱，借此整理一下。先看看与事件分发相关的类。   事件相关的类Event 相关类, 分发事件的中的事件:  Event（基类）, EventCustom（自定义事件）, EventTouch（触摸事件）, EventMouse（鼠标事件）, EventKeyboard（键盘事件）, EventFocus（控件获取焦点事件）, EventAccelera">
+<meta property="og:locale">
+<meta property="article:published_time" content="2016-07-31T10:36:08.000Z">
+<meta property="article:modified_time" content="2020-11-02T10:15:43.957Z">
+<meta property="article:author" content="VoidDog">
+<meta property="article:tag" content="Cocos2d-x">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="http://blog.voiddog.org/1547471102/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>事件分发机制源码解析（一） | 爆裂吧现实</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175543622-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-175543622-1');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">爆裂吧现实</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">不想死就早点睡</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BA%8B%E4%BB%B6%E7%9B%B8%E5%85%B3%E7%9A%84%E7%B1%BB"><span class="nav-number">1.</span> <span class="nav-text">事件相关的类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA%E4%BA%8B%E4%BB%B6"><span class="nav-number">2.</span> <span class="nav-text">创建事件</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BA%8B%E4%BB%B6%E7%9B%91%E5%90%AC%E5%99%A8%E7%9A%84%E5%88%9B%E5%BB%BA%E4%B8%8E%E7%9B%91%E5%90%AC"><span class="nav-number">3.</span> <span class="nav-text">事件监听器的创建与监听</span></a></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="VoidDog"
+      src="https://i.imgur.com/rO7BKq2.png">
+  <p class="site-author-name" itemprop="name">VoidDog</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/voiddog" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/qgx446738721" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;qgx446738721" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.facebook.com/voiddog" title="Facebook → https:&#x2F;&#x2F;www.facebook.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-facebook fa-fw"></i>Facebook</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/voiddog" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-instagram fa-fw"></i>Instagram</a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://blog.voiddog.org/1547471102/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://i.imgur.com/rO7BKq2.png">
+      <meta itemprop="name" content="VoidDog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爆裂吧现实">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          事件分发机制源码解析（一）
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-07-31 10:36:08" itemprop="dateCreated datePublished" datetime="2016-07-31T10:36:08+00:00">2016-07-31</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-11-02 10:15:43" itemprop="dateModified" datetime="2020-11-02T10:15:43+00:00">2020-11-02</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Cocos2d-x/" itemprop="url" rel="index"><span itemprop="name">Cocos2d-x</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p><code>Cocos</code>的事件分发机制，怎么说呢，总感觉有些乱，借此整理一下。先看看与事件分发相关的类。
+ </p>
+<h4 id="事件相关的类"><a href="#事件相关的类" class="headerlink" title="事件相关的类"></a>事件相关的类</h4><p><strong>Event 相关类, 分发事件的中的事件:</strong></p>
+<blockquote>
+<p><code>Event</code>（基类）, <code>EventCustom</code>（自定义事件）, <code>EventTouch</code>（触摸事件）, <code>EventMouse</code>（鼠标事件）, <code>EventKeyboard</code>（键盘事件）, <code>EventFocus</code>（控件获取焦点事件）, <code>EventAcceleration</code>（加速计事件）   </p>
+</blockquote>
+<p><strong>事件监听器:</strong></p>
+<blockquote>
+<p><code>EventListener</code>, <code>EventListenerCustom</code>, <code>EventListenerFocus</code>, <code>EventListenerMouse</code>, <code>EventListenerTouch</code>, <code>EventListenerKayboard</code>, <code>EventListenerAcceleration</code>  </p>
+</blockquote>
+<p><strong>事件ID</strong></p>
+<blockquote>
+<p><code>ListenerID</code>（事件的区分标志，其实就是<code>std::string</code>）  </p>
+</blockquote>
+<p><strong>事件分发器:</strong></p>
+<blockquote>
+<p><code>EventDispatcher</code>（事件分发机制逻辑集合体）  </p>
+</blockquote>
+<h4 id="创建事件"><a href="#创建事件" class="headerlink" title="创建事件"></a>创建事件</h4><p>创建事件就简单的<code>new</code>一个<code>Event</code>的子类即可。
+ </p>
+<h4 id="事件监听器的创建与监听"><a href="#事件监听器的创建与监听" class="headerlink" title="事件监听器的创建与监听"></a>事件监听器的创建与监听</h4><p>事件监听器，也就是说<code>EventListener</code>。添加事件监听器有三个方法，都在<code>EventDispatch</code>中，分别是:
+ </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/** Adds a event listener for a specified event with the priority of scene graph.</span></span><br><span class="line"><span class="comment"> *  @param listener The listener of a specified event.</span></span><br><span class="line"><span class="comment"> *  @param node The priority of the listener is based on the draw order of this node.</span></span><br><span class="line"><span class="comment"> *  @note  The priority of scene graph will be fixed value 0. So the order of listener item</span></span><br><span class="line"><span class="comment"> *          in the vector will be &#x27; &lt;0, scene graph (0 priority), &gt;0&#x27;.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">addEventListenerWithSceneGraphPriority</span><span class="params">(EventListener* listener, Node* node)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/** Adds a event listener for a specified event with the fixed priority.</span></span><br><span class="line"><span class="comment"> *  @param listener The listener of a specified event.</span></span><br><span class="line"><span class="comment"> *  @param fixedPriority The fixed priority of the listener.</span></span><br><span class="line"><span class="comment"> *  @note A lower priority will be called before the ones that have a higher value.</span></span><br><span class="line"><span class="comment"> *        0 priority is forbidden for fixed priority since it&#x27;s used for scene graph based priority.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">addEventListenerWithFixedPriority</span><span class="params">(EventListener* listener, <span class="keyword">int</span> fixedPriority)</span></span>;</span><br><span class="line"> </span><br><span class="line"><span class="comment">/** Adds a Custom event listener. It will use a fixed priority of 1.</span></span><br><span class="line"><span class="comment"> * @param eventName A given name of the event.</span></span><br><span class="line"><span class="comment"> * @param callback A given callback method that associated the event name.</span></span><br><span class="line"><span class="comment"> * @return the generated event. Needed in order to remove the event from the dispatcher</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function">EventListenerCustom* <span class="title">addCustomEventListener</span><span class="params">(<span class="keyword">const</span> <span class="built_in">std</span>::<span class="built_in">string</span> &amp;eventName, <span class="keyword">const</span> <span class="built_in">std</span>::function&lt;<span class="keyword">void</span>(EventCustom*)&gt;&amp; callback)</span></span>;</span><br></pre></td></tr></table></figure>
+<p> <br>事件分发的时候主要有<strong>两种优先级</strong>。<br>    第一种是：ScenePriority<br>    第二种是：FixedPriority<br>仔细跳到<code>addEventListenerWithSceneGraphPriority</code>函数去看看会发现：
+ </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventDispatcher::addEventListenerWithSceneGraphPriority</span><span class="params">(EventListener* listener, Node* node)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    ...</span><br><span class="line">    <span class="comment">// 设置优先级</span></span><br><span class="line">    listener-&gt;setFixedPriority(<span class="number">0</span>);</span><br><span class="line">    ...</span><br><span class="line"> </span><br><span class="line">    addEventListener(listener);</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line"><span class="function">EventListenerCustom* <span class="title">EventDispatcher::addCustomEventListener</span><span class="params">(<span class="keyword">const</span> <span class="built_in">std</span>::<span class="built_in">string</span> &amp;eventName, <span class="keyword">const</span> <span class="built_in">std</span>::function&lt;<span class="keyword">void</span>(EventCustom*)&gt;&amp; callback)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    EventListenerCustom *listener = EventListenerCustom::create(eventName, callback);\</span><br><span class="line">    <span class="comment">// 设置优先级</span></span><br><span class="line">    addEventListenerWithFixedPriority(listener, <span class="number">1</span>);</span><br><span class="line">    <span class="keyword">return</span> listener;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> <a id="more"></a><br>其实事件监听器保存的优先级其实只有 <em>FixPriority</em>。</p>
+<blockquote>
+<p>从<code>EventListener</code>这个类的方法中也可以看出来，里面涉及到保存优先级的只有<code>setFixedPriority</code>这一个函数。  </p>
+</blockquote>
+<p>说到优先级，那么事件分发的时候是怎么处理这些优先级的呢？官网只有写 <em>SceneGraphPriority</em> 的优先级是怎么处理的，那么 <em>FixPriority</em> 的优先程度和数值是什么关系，这就去偷窥内部了。<br> <br><strong>事件分发优先级顺序：</strong><br>我们来脱掉 <code>EventDispatcher</code> 的衣服看看：
+ </p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventDispatcher::dispatchEvent</span><span class="params">(Event* event)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    ...</span><br><span class="line">    <span class="comment">// 先通过event获取到事件的标志ListenerID</span></span><br><span class="line">    <span class="keyword">auto</span> listenerID = __getListenerID(event);</span><br><span class="line">    <span class="comment">// 排序此事件的所有的监听器</span></span><br><span class="line">    sortEventListeners(listenerID);</span><br><span class="line">    <span class="comment">// 分发事件逻辑的函数指针</span></span><br><span class="line">    <span class="keyword">auto</span> pfnDispatchEventToListeners = &amp;EventDispatcher::dispatchEventToListeners;</span><br><span class="line">    <span class="keyword">if</span> (event-&gt;getType() == Event::Type::MOUSE) &#123;</span><br><span class="line">        <span class="comment">// 如果是鼠标事件重新赋值分发事件的函数指针</span></span><br><span class="line">        pfnDispatchEventToListeners = &amp;EventDispatcher::dispatchTouchEventToListeners;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 获取改事件的所有的监听器</span></span><br><span class="line">    <span class="keyword">auto</span> iter = _listenerMap.find(listenerID);</span><br><span class="line">    <span class="keyword">if</span> (iter != _listenerMap.end())</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 如果有，取出里面监听器的Vector</span></span><br><span class="line">        <span class="keyword">auto</span> listeners = iter-&gt;second;</span><br><span class="line">        <span class="comment">// 找到对应的监听器的时候会触发的回调函数</span></span><br><span class="line">        <span class="keyword">auto</span> onEvent = [&amp;event](EventListener* listener) -&gt; <span class="keyword">bool</span>&#123;</span><br><span class="line">            event-&gt;setCurrentTarget(listener-&gt;getAssociatedNode());</span><br><span class="line">            <span class="comment">// 触发onEvent回调</span></span><br><span class="line">            listener-&gt;_onEvent(event);</span><br><span class="line">            <span class="keyword">return</span> event-&gt;isStopped();</span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="comment">// 调用函数指针分发事件</span></span><br><span class="line">        (<span class="keyword">this</span>-&gt;*pfnDispatchEventToListeners)(listeners, onEvent);</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> <br>偷窥代码分析后发现这段代码并没有详细指出分发事件的时候的优先级。仔细想想应该是 <code>sortEventListener</code> 和 <code>pfnDispatchEventToListeners</code> 中在搞鬼。<br>先分析 <code>sortEventListener</code>，脱掉她的胖次去里面看看。
+ </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventDispatcher::sortEventListeners</span><span class="params">(<span class="keyword">const</span> EventListener::ListenerID&amp; listenerID)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    ...</span><br><span class="line">        ...</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">if</span> ((<span class="keyword">int</span>)dirtyFlag &amp; (<span class="keyword">int</span>)DirtyFlag::FIXED_PRIORITY)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">// 对FixPriority优先级类型的监听器排序</span></span><br><span class="line">            sortEventListenersOfFixedPriority(listenerID);</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">if</span> ((<span class="keyword">int</span>)dirtyFlag &amp; (<span class="keyword">int</span>)DirtyFlag::SCENE_GRAPH_PRIORITY)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">auto</span> rootNode = Director::getInstance()-&gt;getRunningScene();</span><br><span class="line">            <span class="keyword">if</span> (rootNode)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">// 对SceneGraphPriority类型的监听器排序</span></span><br><span class="line">                sortEventListenersOfSceneGraphPriority(listenerID, rootNode);</span><br><span class="line">            &#125;</span><br><span class="line">            ...</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventDispatcher::sortEventListenersOfFixedPriority</span><span class="params">(<span class="keyword">const</span> EventListener::ListenerID&amp; listenerID)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> listeners = getListeners(listenerID);</span><br><span class="line"> </span><br><span class="line">    ...</span><br><span class="line"> </span><br><span class="line">    <span class="comment">// After sort: priority &lt; 0, &gt; 0 排序，根据FixedPriority的数值大小，越小的优先级越高</span></span><br><span class="line">    <span class="built_in">std</span>::sort(fixedListeners-&gt;begin(), fixedListeners-&gt;end(), [](<span class="keyword">const</span> EventListener* l1, <span class="keyword">const</span> EventListener* l2) &#123;</span><br><span class="line">        <span class="keyword">return</span> l1-&gt;getFixedPriority() &lt; l2-&gt;getFixedPriority();</span><br><span class="line">    &#125;);</span><br><span class="line"> </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventDispatcher::sortEventListenersOfSceneGraphPriority</span><span class="params">(<span class="keyword">const</span> EventListener::ListenerID&amp; listenerID, Node* rootNode)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> listeners = getListeners(listenerID);</span><br><span class="line"> </span><br><span class="line">    ...</span><br><span class="line">    <span class="keyword">auto</span> sceneGraphListeners = listeners-&gt;getSceneGraphPriorityListeners();</span><br><span class="line"> </span><br><span class="line">    ...</span><br><span class="line"> </span><br><span class="line">    <span class="comment">// Reset priority index</span></span><br><span class="line">    _nodePriorityIndex = <span class="number">0</span>;</span><br><span class="line">    _nodePriorityMap.clear();</span><br><span class="line"> </span><br><span class="line">    <span class="comment">// 从当前根节点rootNode开始，遍历整棵节点树，并标记上相应的节点等级，父节点的优先级比子节点的大</span></span><br><span class="line">    visitTarget(rootNode, <span class="literal">true</span>);</span><br><span class="line"> </span><br><span class="line">    <span class="comment">// After sort: priority &lt; 0, &gt; 0 因为SceneGraphPriority都是FixPriority为0的事件类型，所以比较节点在渲染书中的优先级</span></span><br><span class="line">    <span class="built_in">std</span>::sort(sceneGraphListeners-&gt;begin(), sceneGraphListeners-&gt;end(), [<span class="keyword">this</span>](<span class="keyword">const</span> EventListener* l1, <span class="keyword">const</span> EventListener* l2) &#123;</span><br><span class="line">        <span class="keyword">return</span> _nodePriorityMap[l1-&gt;getAssociatedNode()] &gt; _nodePriorityMap[l2-&gt;getAssociatedNode()];</span><br><span class="line">    &#125;);</span><br><span class="line"> </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> <br>上面写了两种优先级的排序，一种是 <em>FixPriority</em>，优先级根据 <em>fixedPriority</em> 的数值从小往大排序、另一种是 <em>SceneGraphPriority</em>，根据节点在渲染树种的优先级排序，具体怎么样官网有解释，这里不做展开。</p>
+<p>值的注意的是 <code>sortEventListener</code> 的时候，判断当前 <code>ListenerID</code> 的类型是用位标记来判断的，一个 <code>int</code> 类型的 flag。也就是说明一个 <code>listenerID</code> 既可以是 <em>SceneGraphPriority</em> 也可以是 <em>FixedPriority</em>，那么实际分发的时候这两个的优先级怎么排？答案就在 <code>pfnDispatchEventToListeners</code> 中<br> <br><code>pfnDispatchEventToListeners</code> 可以指向两个方法：<code>dispatchEventToListeners</code> 和 <code>dispatchTouchEventToListeners</code>。其中两个方法除了分发<code>SceneGraphPriority</code>的时候不一样外，其他的一样，为了方便起见，这里只分析 <code>dispatchEventToListeners</code>。
+ </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventDispatcher::dispatchEventToListeners</span><span class="params">(EventListenerVector* listeners, <span class="keyword">const</span> <span class="built_in">std</span>::function&lt;<span class="keyword">bool</span>(EventListener*)&gt;&amp; onEvent)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">bool</span> shouldStopPropagation = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">auto</span> fixedPriorityListeners = listeners-&gt;getFixedPriorityListeners();</span><br><span class="line">    <span class="keyword">auto</span> sceneGraphPriorityListeners = listeners-&gt;getSceneGraphPriorityListeners();</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">ssize_t</span> i = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">// priority &lt; 0 优先处理priority小于0的时候的事件监听器</span></span><br><span class="line">    <span class="keyword">if</span> (fixedPriorityListeners)</span><br><span class="line">    &#123;</span><br><span class="line">        CCASSERT(listeners-&gt;getGt0Index() &lt;= <span class="keyword">static_cast</span>&lt;<span class="keyword">ssize_t</span>&gt;(fixedPriorityListeners-&gt;size()), <span class="string">&quot;Out of range exception!&quot;</span>);</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">if</span> (!fixedPriorityListeners-&gt;empty())</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">for</span> (; i &lt; listeners-&gt;getGt0Index(); ++i)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">auto</span> l = fixedPriorityListeners-&gt;at(i);</span><br><span class="line">                <span class="comment">// 判断是否可以执行事件，如果可以最后调用onEvent执行，如果onEvent返回true，说明吞噬事件，结束分发。</span></span><br><span class="line">                <span class="keyword">if</span> (l-&gt;isEnabled() &amp;&amp; !l-&gt;isPaused() &amp;&amp; l-&gt;isRegistered() &amp;&amp; onEvent(l))</span><br><span class="line">                &#123;</span><br><span class="line">                    shouldStopPropagation = <span class="literal">true</span>;</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 接下来分发SceneGraphPriority的事件</span></span><br><span class="line">    <span class="keyword">if</span> (sceneGraphPriorityListeners)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 判断事件是否已经终止发送</span></span><br><span class="line">        <span class="keyword">if</span> (!shouldStopPropagation)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">// priority == 0, scene graph priority</span></span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; l : *sceneGraphPriorityListeners)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">if</span> (l-&gt;isEnabled() &amp;&amp; !l-&gt;isPaused() &amp;&amp; l-&gt;isRegistered() &amp;&amp; onEvent(l))</span><br><span class="line">                &#123;</span><br><span class="line">                    shouldStopPropagation = <span class="literal">true</span>;</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 最后分发到fixedPriority &gt; 0 的监听器</span></span><br><span class="line">    <span class="keyword">if</span> (fixedPriorityListeners)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span> (!shouldStopPropagation)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">// priority &gt; 0</span></span><br><span class="line">            <span class="keyword">ssize_t</span> size = fixedPriorityListeners-&gt;size();</span><br><span class="line">            <span class="keyword">for</span> (; i &lt; size; ++i)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">auto</span> l = fixedPriorityListeners-&gt;at(i);</span><br><span class="line"> </span><br><span class="line">                <span class="keyword">if</span> (l-&gt;isEnabled() &amp;&amp; !l-&gt;isPaused() &amp;&amp; l-&gt;isRegistered() &amp;&amp; onEvent(l))</span><br><span class="line">                &#123;</span><br><span class="line">                    shouldStopPropagation = <span class="literal">true</span>;</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> <br>这里面清楚的写出了事件分发时候的逻辑处理，先分发事件到 *fixedPriority &lt; 0* 的监听器中，然后再分发到 = 0 的监听器（*SceneGraphPriority*）中，最后在分发到 &gt; 0 的监听器中，如果中途出现 <code>onEvent</code> 返回为 <code>true</code> 的结果，则终止分发。</p>
+<blockquote>
+<p>Ps：这里的 <code>onEvent</code> 调用的其实就是上面 <code>dispatchEvent</code> 代码中的 <em>lambda</em> 表达式。如果想要创建一个触摸事件的优先级比当前所有的触摸事件优先级都高话，只需要把 <em>fixedPriority</em> 的数值设为 &lt; 0 即可。</p>
+</blockquote>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Cocos2d-x/" rel="tag"># Cocos2d-x</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/1547471099/" rel="prev" title="Cocos多模块热更新方案">
+                  <i class="fa fa-chevron-left"></i> Cocos多模块热更新方案
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/1547471196/" rel="next" title="事件分发机制源码解析（二）">
+                  事件分发机制源码解析（二） <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">VoidDog</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

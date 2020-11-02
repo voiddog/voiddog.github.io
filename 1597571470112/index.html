@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"blog.voiddog.org","root":"/","scheme":"Pisces","version":"8.0.0-rc.5","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false};
+  </script>
+
+  <meta name="description" content="什么是手势冲突？它和 Listener 有啥区别？ Flutter 是怎么解决手势处理的?  如果你对上述问题的答案没有底，就需要来恶补 flutter 手势处理的规则了 😁">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Flutter 手势事件解析（二）">
+<meta property="og:url" content="http://blog.voiddog.org/1597571470112/index.html">
+<meta property="og:site_name" content="爆裂吧现实">
+<meta property="og:description" content="什么是手势冲突？它和 Listener 有啥区别？ Flutter 是怎么解决手势处理的?  如果你对上述问题的答案没有底，就需要来恶补 flutter 手势处理的规则了 😁">
+<meta property="og:locale">
+<meta property="og:image" content="https://i.imgur.com/y24W8Qx.png">
+<meta property="article:published_time" content="2020-08-16T17:57:02.000Z">
+<meta property="article:modified_time" content="2020-11-02T10:15:43.957Z">
+<meta property="article:author" content="VoidDog">
+<meta property="article:tag" content="Flutter">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/y24W8Qx.png">
+
+
+<link rel="canonical" href="http://blog.voiddog.org/1597571470112/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>Flutter 手势事件解析（二） | 爆裂吧现实</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175543622-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-175543622-1');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">爆裂吧现实</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">不想死就早点睡</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E4%BB%80%E4%B9%88%E6%98%AF%E6%89%8B%E5%8A%BF%E5%86%B2%E7%AA%81%EF%BC%9F%E5%AE%83%E5%92%8C-Listener-%E6%9C%89%E5%95%A5%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="nav-number">1.</span> <span class="nav-text">一、什么是手势冲突？它和 Listener 有啥区别？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81Flutter-%E6%98%AF%E6%80%8E%E4%B9%88%E8%A7%A3%E5%86%B3%E6%89%8B%E5%8A%BF%E5%A4%84%E7%90%86%E7%9A%84"><span class="nav-number">2.</span> <span class="nav-text">二、Flutter 是怎么解决手势处理的?</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E5%A6%82%E6%9E%9C%E6%9C%89%E4%B8%A4%E4%B8%AA%E7%AB%96%E5%90%91%E6%8B%96%E5%8A%A8%E8%AF%86%E5%88%AB%E5%99%A8%E6%98%AF%E6%80%8E%E4%B9%88%E5%A4%84%E7%90%86%E7%9A%84%EF%BC%9F"><span class="nav-number">2.1.</span> <span class="nav-text">1. 如果有两个竖向拖动识别器是怎么处理的？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="nav-number">3.</span> <span class="nav-text">三、源码解析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E7%AE%80%E5%8D%95%E5%9B%9E%E9%A1%BE%E4%B8%8B-pointer-event-%E5%88%86%E5%8F%91%E9%80%BB%E8%BE%91"><span class="nav-number">3.1.</span> <span class="nav-text">1. 简单回顾下 pointer event 分发逻辑</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-GestureBinding-%E9%87%8C%E9%9D%A2%E7%9A%84%E7%AB%9E%E6%8A%80%E5%9C%BA%E7%AE%A1%E7%90%86%E7%B1%BB-GestureArenaManager"><span class="nav-number">3.2.</span> <span class="nav-text">2. GestureBinding 里面的竞技场管理类 GestureArenaManager</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GestureDetector-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="nav-number">3.3.</span> <span class="nav-text">GestureDetector 源码解析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%A6%82%E4%BD%95%E5%AE%A3%E5%91%8A%E8%83%9C%E5%88%A9-%E5%A4%B1%E8%B4%A5"><span class="nav-number">3.4.</span> <span class="nav-text">3. 如何宣告胜利&#x2F;失败</span></a></li></ol></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="VoidDog"
+      src="https://i.imgur.com/rO7BKq2.png">
+  <p class="site-author-name" itemprop="name">VoidDog</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/voiddog" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/qgx446738721" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;qgx446738721" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.facebook.com/voiddog" title="Facebook → https:&#x2F;&#x2F;www.facebook.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-facebook fa-fw"></i>Facebook</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/voiddog" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-instagram fa-fw"></i>Instagram</a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://blog.voiddog.org/1597571470112/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://i.imgur.com/rO7BKq2.png">
+      <meta itemprop="name" content="VoidDog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爆裂吧现实">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Flutter 手势事件解析（二）
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-08-16 17:57:02" itemprop="dateCreated datePublished" datetime="2020-08-16T17:57:02+00:00">2020-08-16</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-11-02 10:15:43" itemprop="dateModified" datetime="2020-11-02T10:15:43+00:00">2020-11-02</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Flutter/" itemprop="url" rel="index"><span itemprop="name">Flutter</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <ul>
+<li>什么是手势冲突？它和 Listener 有啥区别？</li>
+<li>Flutter 是怎么解决手势处理的?</li>
+</ul>
+<p>如果你对上述问题的答案没有底，就需要来恶补 flutter 手势处理的规则了 😁</p>
+<a id="more"></a>
+
+<h2 id="一、什么是手势冲突？它和-Listener-有啥区别？"><a href="#一、什么是手势冲突？它和-Listener-有啥区别？" class="headerlink" title="一、什么是手势冲突？它和 Listener 有啥区别？"></a>一、什么是手势冲突？它和 Listener 有啥区别？</h2><p>要解释这个问题，首先先来定义下什么是手势。flutter 官方对于手势的定义是：</p>
+<p><em>一种语义操作（点击、拖动、缩放）。通常是由一系列单独的指针事件 (pointer event) 组成，也可以是多个单独的指针事件组组成。</em><a target="_blank" rel="noopener" href="https://flutter.dev/docs/development/ui/advanced/gestures">原文</a></p>
+<p>既然是有语义的，那么避免不了冲突，比如横向拖动和竖向拖动，当手指在屏幕上滑动的时候，我是响应横向滚动呢？还是竖向滚动呢？还是两个一起动？</p>
+<p><em>Listener</em> widget 就是一个指针事件消费者，不存在语义的定义，相当于独行侠，自己处理自己的事件，和其它 <em>Listener</em> 不相干，但是手势就不同了，它不能只考虑自己，这样整个 app 的交互就会乱。</p>
+<h2 id="二、Flutter-是怎么解决手势处理的"><a href="#二、Flutter-是怎么解决手势处理的" class="headerlink" title="二、Flutter 是怎么解决手势处理的?"></a>二、Flutter 是怎么解决手势处理的?</h2><blockquote>
+<p>Flutter  的手势处理源码分析较为复杂，这里直接先说解决方案</p>
+</blockquote>
+<p>当 Flutter 中存在手势冲突的时候，它是根据 <strong>手势竞技场（gesture arena）</strong> 来解决这个问题的。所有的 <strong>手势识别器 <em>GestureRecongnizer</em></strong>  都是一个 <strong>手势竞技场成员（<em>GestureArenaMember</em>）</strong>。</p>
+<p>当屏幕上的指定指针有多个 <strong>手势识别器</strong> 时，框架会让每个 <strong>手势识别器</strong> 加入到 <strong>手势竞技场</strong> 来处理手势消歧。<strong>手势竞技场</strong> 会根据以下规则来判定胜出者：</p>
+<ul>
+<li>在任何时候，识别器都可以宣告失败并离开竞技场。如果竞技场中只有一个识别器，那么这个识别器就是胜者。</li>
+<li>在任何时候，任何识别器都可以宣告胜利，这将导致这个识别器胜出，其他识别器失败。</li>
+</ul>
+<p>假如有两个手势识别器，横向拖动、纵向拖动，当指针 down 落下后，这两个手势识别器都会加入到 <strong>手势竞技场</strong> 中，观测指针的移动事件 (PointerMoveEvent)。如果用户在横向上移动超过了特定像素，横向识别器会宣告胜利，手势也会被当作横向拖动处理。同样的，如果用户在纵向上移动超过了特定的像素，纵向识别器会宣告胜利。</p>
+<p>但是如果 <strong>手势竞技场</strong> 只有一个手势识别器的话，这个识别器就会被立即胜出，比如只有一个横向拖动识别器的时候，就不需要等到横向移动一定距离后了，可以立即响应横向拖动，非常高效灵敏。</p>
+<h3 id="1-如果有两个竖向拖动识别器是怎么处理的？"><a href="#1-如果有两个竖向拖动识别器是怎么处理的？" class="headerlink" title="1. 如果有两个竖向拖动识别器是怎么处理的？"></a>1. 如果有两个竖向拖动识别器是怎么处理的？</h3><p>这里的处理逻辑其实和 <em>一个横向，一个竖向识别器</em> 一样，存在多个识别器的话需要看哪个识别器先宣告成功，或者主动宣告失败直到还剩一个识别器。</p>
+<p>一般来说存在两个竖向拖动识别器是 <em>ListView</em> 嵌套 <em>ListView</em> 的情况，在这种情况下只有子 <em>ListView</em> 会响应，因为指针事件（pointer event）是 child 优先消费的。</p>
+<blockquote>
+<p>到这里为止，关于 flutter 怎么处理手势冲突的解决方案就讲完了，接下来就是枯燥的源码分析环节了。对于只需要了解手势冲突解决方案的，看到这里就 OK 了，对于源码和细节想深究的，一起往下看。</p>
+</blockquote>
+<hr>
+<h2 id="三、源码解析"><a href="#三、源码解析" class="headerlink" title="三、源码解析"></a>三、源码解析</h2><h3 id="1-简单回顾下-pointer-event-分发逻辑"><a href="#1-简单回顾下-pointer-event-分发逻辑" class="headerlink" title="1. 简单回顾下 pointer event 分发逻辑"></a>1. 简单回顾下 pointer event 分发逻辑</h3><p>在 <a href="/1597571250707/" title="文章一">文章一</a> 中讲述了 pointer event 的分发逻辑</p>
+<p><img src="https://i.imgur.com/y24W8Qx.png"></p>
+<p>简述就是：pointer down 事件到来后，<em>RendererBinding</em> 会从 <em>RenderObject</em> 树的根开始执行 hitTest 判定，得到 <em>hitTestResult</em>，里面包含了需要消费 pointer event 事件的消费者。然后再将当前的 down 事件和之后的 move / up / cancel 等事件发送给对应的消费者</p>
+<h3 id="2-GestureBinding-里面的竞技场管理类-GestureArenaManager"><a href="#2-GestureBinding-里面的竞技场管理类-GestureArenaManager" class="headerlink" title="2. GestureBinding 里面的竞技场管理类 GestureArenaManager"></a>2. <em>GestureBinding</em> 里面的竞技场管理类 <em>GestureArenaManager</em></h3><p><em>GestureBinding</em> 单例中有个 <em>GestureArenaManager</em>，用于管理手势竞技场，这个管理者是在成员方法 <code>handleEvent(PointerEvent, HitTestEntry)</code> 中被调用的：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">GestureBinding</span> <span class="title">on</span> <span class="title">BindingBase</span> <span class="keyword">implements</span> <span class="title">HitTestable</span>, <span class="title">HitTestDispatcher</span>, <span class="title">HitTestTarget</span> </span>&#123;</span><br><span class="line">  </span><br><span class="line">    <span class="meta">@override</span> <span class="comment">// from HitTestTarget</span></span><br><span class="line">  <span class="keyword">void</span> handleEvent(PointerEvent event, HitTestEntry entry) &#123;</span><br><span class="line">    pointerRouter.route(event);</span><br><span class="line">    <span class="keyword">if</span> (event <span class="keyword">is</span> PointerDownEvent) &#123;</span><br><span class="line">      gestureArena.close(event.pointer);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (event <span class="keyword">is</span> PointerUpEvent) &#123;</span><br><span class="line">      gestureArena.sweep(event.pointer);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (event <span class="keyword">is</span> PointerSignalEvent) &#123;</span><br><span class="line">      pointerSignalResolver.resolve(event);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>那么这个 <em>handleEvent(..)</em> 什么时候会被调用呢？</strong>其实 <em>GestureBinding</em> 自己就是一个 <em>HitTestTarget</em>，也就是它是个 pointer event 消费者，这个在成员方法 <em>hitTest(..)</em> 中可以看出来：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">GestureBinding</span> <span class="title">on</span> <span class="title">BindingBase</span> <span class="keyword">implements</span> <span class="title">HitTestable</span>, <span class="title">HitTestDispatcher</span>, <span class="title">HitTestTarget</span> </span>&#123;</span><br><span class="line">  <span class="comment">/// <span class="markdown">Determine which [HitTestTarget] objects are located at a given position.</span></span></span><br><span class="line">  <span class="meta">@override</span> <span class="comment">// from HitTestable</span></span><br><span class="line">  <span class="keyword">void</span> hitTest(HitTestResult result, Offset position) &#123;</span><br><span class="line">    result.add(HitTestEntry(<span class="keyword">this</span>));</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">mixin</span> RendererBinding <span class="keyword">on</span> GestureBinding ...&#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  <span class="keyword">void</span> hitTest(HitTestResult result, Offset position) &#123;</span><br><span class="line">    rendererView.hitTest(result, position);</span><br><span class="line">    <span class="comment">// 这里的 surper 就是 GestureBinding 的 hitTest</span></span><br><span class="line">    <span class="keyword">super</span>.hitTest(result, position);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><em>GestureBinding</em> 自身也参与到 <em>hitTest(..)</em> 分发中，并且直接把自己加入到 <em>HitTEstResult</em> 的消费者队列中。根据子类 <em>RendererBinding</em> 的实现看，会先执行 <em>rendererView</em> 的 hitTest，然后才执行 <em>GestureBinding</em> 的 hitTest。</p>
+<p>这里可以得出结论的是：<em>GestureBinding</em> 会在 <em>RenderObject</em> 树之后去消费 pointer event。</p>
+<hr>
+<p><strong>继续解析 <em>handleEvent(..)</em> 的代码：</strong></p>
+<ol>
+<li>在参数 event 是 <em>PointerDownEvent</em> 的时候，会<strong>调用 <code>gestureArena.close(event.pointer)</code>方法</strong>，这个方法的注释如下：</li>
+</ol>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// <span class="markdown">Prevents new members from entering the arena.</span></span></span><br><span class="line"><span class="comment">///</span></span><br><span class="line"><span class="comment">/// <span class="markdown">Called after the framework has finished dispatching the pointer down event.</span></span></span><br><span class="line"><span class="keyword">void</span> close(<span class="built_in">int</span> pointer) &#123;</span><br><span class="line">  <span class="keyword">final</span> _GestureArena state = _arenas[pointer];</span><br><span class="line">  <span class="keyword">if</span> (state == <span class="keyword">null</span>)</span><br><span class="line">    <span class="keyword">return</span>; <span class="comment">// This arena either never existed or has been resolved.</span></span><br><span class="line">  state.isOpen = <span class="keyword">false</span>;</span><br><span class="line">  <span class="keyword">assert</span>(_debugLogDiagnostic(pointer, <span class="string">&#x27;Closing&#x27;</span>, state));</span><br><span class="line">  _tryToResolveArena(pointer, state);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>也就是当 <em>GestureBinding</em> 收到 down 事件的时候，竞技场的报名就结束了，不允许中途报名（ <em>GestureBinding</em> 是在 <em>RenderObject</em> 树之后接受 pointer event 的）。所以我们只有在 down 事件的时候可以添加手势识别器到竞技场中。</p>
+<p>最后的 <code>_tryToResolveArena(pointer, state);</code> 是用来得出某些情况下的胜利者的，我们来看下源码：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> _tryToResolveArena(<span class="built_in">int</span> pointer, _GestureArena state) &#123;</span><br><span class="line">  ...</span><br><span class="line">  <span class="keyword">if</span> (state.members.length == <span class="number">1</span>) &#123;</span><br><span class="line">    <span class="comment">// 如果只有一位竞技者，直接判定它为胜利者</span></span><br><span class="line">    scheduleMicrotask(() =&gt; _resolveByDefault(pointer, state));</span><br><span class="line">  &#125; <span class="keyword">else</span> <span class="keyword">if</span> (state.members.isEmpty) &#123;</span><br><span class="line">    <span class="comment">// 没有需要竞技的参赛员</span></span><br><span class="line">    _arenas.remove(pointer);</span><br><span class="line">  &#125; <span class="keyword">else</span> <span class="keyword">if</span> (state.eagerWinner != <span class="keyword">null</span>) &#123;</span><br><span class="line">    <span class="comment">// 激进的获胜者，在 down event 阶段就宣布胜利的</span></span><br><span class="line">    _resolveInFavorOf(pointer, state, state.eagerWinner);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">void</span> _resolveByDefault(<span class="built_in">int</span> pointer, _GestureArena state) &#123;</span><br><span class="line">  <span class="keyword">if</span> (!_arenas.containsKey(pointer))</span><br><span class="line">    <span class="keyword">return</span>; <span class="comment">// Already resolved earlier.</span></span><br><span class="line">  <span class="keyword">final</span> <span class="built_in">List</span>&lt;GestureArenaMember&gt; members = state.members;</span><br><span class="line">  <span class="keyword">assert</span>(members.length == <span class="number">1</span>);</span><br><span class="line">  _arenas.remove(pointer);</span><br><span class="line">  <span class="comment">// 宣告唯一的一个竞技者胜利</span></span><br><span class="line">  state.members.first.acceptGesture(pointer);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">void</span> _resolveInFavorOf(<span class="built_in">int</span> pointer, _GestureArena state, GestureArenaMember member) &#123;</span><br><span class="line">  _arenas.remove(pointer);</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">final</span> GestureArenaMember rejectedMember <span class="keyword">in</span> state.members) &#123;</span><br><span class="line">    <span class="comment">// 宣告其它竞技者失败</span></span><br><span class="line">    <span class="keyword">if</span> (rejectedMember != member)</span><br><span class="line">      rejectedMember.rejectGesture(pointer);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// 宣告竞技者胜利</span></span><br><span class="line">  member.acceptGesture(pointer);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>代码中的可以看到，如果 竞技者 只有一位，那么直接宣告这位 竞技者 胜利，如果没有 竞技者，直接移除当前竞技场，如果有个激进的 获胜者（<em>state.eagerWinner</em>，就是在 down 期间就宣告胜利的 竞技者），则把它判定为获胜者。</p>
+<ol start="2">
+<li>当参数 event 是 <em>PointerUpEvent</em> 的时候，会调用 <code>gestureArena.sweep(event.pointer)</code>，这个方法的注释如下：</li>
+</ol>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// <span class="markdown">Forces resolution of the arena, giving the win to the first member.</span></span></span><br><span class="line"><span class="comment">/// <span class="markdown">...</span></span></span><br><span class="line"><span class="keyword">void</span> sweep(<span class="built_in">int</span> pointer) &#123;</span><br><span class="line">  <span class="keyword">final</span> _GestureArena state = _arenas[pointer];</span><br><span class="line">  <span class="keyword">if</span> (state == <span class="keyword">null</span>)</span><br><span class="line">    <span class="keyword">return</span>; <span class="comment">// This arena either never existed or has been resolved.</span></span><br><span class="line">  _arenas.remove(pointer);</span><br><span class="line">  <span class="keyword">if</span> (state.members.isNotEmpty) &#123;</span><br><span class="line">    <span class="comment">// 宣告第一个竞争者为胜利者</span></span><br><span class="line">    state.members.first.acceptGesture(pointer);</span><br><span class="line">    <span class="comment">// 宣告其它竞争者失败</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="built_in">int</span> i = <span class="number">1</span>; i &lt; state.members.length; i++)</span><br><span class="line">      state.members[i].rejectGesture(pointer);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><em>PointerUpEvent</em> 是一次完整触摸事件的终点，这时候竞技场管理者就开始清扫竞技场了，如果这时候还没有获胜的竞技者，那么第一位将会获胜！</p>
+<blockquote>
+<p>sweep 可以被延迟（这部分代码省略显示了），需要调用 <code>gestureArena.hold(pointer)</code>，可以延迟竞技场的清理直到 <code>gestureArena.release(pointer)</code> 被调用</p>
+</blockquote>
+<p><em>GestureBinding</em> 中关于竞技场处理的逻辑到这里就完了，<em>GestureBinding</em> 只负责了关闭竞技场报名和最后的清理竞技场，并没有关于 <em>PointerMoveEvent</em> 中间过程中的一些竞技判定逻辑。为了查找这部分的逻辑，我们来分析下 <em>GestureDetector</em> 的源码：</p>
+<h3 id="GestureDetector-源码解析"><a href="#GestureDetector-源码解析" class="headerlink" title="GestureDetector 源码解析"></a><em>GestureDetector</em> 源码解析</h3><p><em>GestureDetector</em> 是一个 <em>StalessWidget</em>，它的大部分代码就是把各种手势回调转化为手势识别器，例如将 <em>onHorizontalDragStart</em> 转换为 <em>HorizontalDragGestureRecognizer</em>，然后将这些识别器代理到 <em>RawGestureDetector</em> 中。</p>
+<p><em>RawGestureDetector</em> 是个 <em>StatefulWidget</em>，在它的 build 方法中，我们可以看到 <em>Listener</em> 的身影：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@override</span></span><br><span class="line">Widget build(BuildContext context) &#123;</span><br><span class="line">  Widget result = Listener(</span><br><span class="line">    <span class="comment">// 只监听了 onPointerDown 事件</span></span><br><span class="line">    onPointerDown: _handlePointerDown,</span><br><span class="line">    behavior: widget.behavior ?? _defaultBehavior,</span><br><span class="line">    child: widget.child,</span><br><span class="line">  );</span><br><span class="line">  <span class="keyword">if</span> (!widget.excludeFromSemantics)</span><br><span class="line">    result = _GestureSemantics(</span><br><span class="line">      child: result,</span><br><span class="line">      assignSemantics: _updateSemanticsForRenderObject,</span><br><span class="line">    );</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><em>Listener</em> 是监听原始 pointer event 的组件，这里只监听了 <em>onPointerDown</em> 事件，继续往下追踪：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> _handlePointerDown(PointerDownEvent event) &#123;</span><br><span class="line">  <span class="keyword">assert</span>(_recognizers != <span class="keyword">null</span>);</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">final</span> GestureRecognizer recognizer <span class="keyword">in</span> _recognizers.values)</span><br><span class="line">    recognizer.addPointer(event);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到在 <em>_handlePointerDown</em> 的时候，遍历了所有的 <em>GestureRecognizer</em> 将当前的 down 事件传递了进去。这里和我当初的预期有些差异，我以为这里的 <em>Listener</em> 会监听所有的 down、move、up、cancel，然后代理到 <em>GestureRecognizer</em> 中，看代码并不是。那么手势识别器是在什么时候接受 move、up、cancel 等 pointer event 的呢？</p>
+<p>这里就要看下 <code>recognizer.addPointer(event)</code> 的实现了：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> addPointer(PointerDownEvent event) &#123;</span><br><span class="line">  _pointerToKind[event.pointer] = event.kind;</span><br><span class="line">  <span class="keyword">if</span> (isPointerAllowed(event)) &#123;</span><br><span class="line">    addAllowedPointer(event);</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    handleNonAllowedPointer(event);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">@protected</span></span><br><span class="line"><span class="keyword">void</span> addAllowedPointer(PointerDownEvent event) &#123; &#125;</span><br></pre></td></tr></table></figure>
+
+<p>。。。啥都没有，继续看下子类的实现：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">DragGestureRecognizer</span> <span class="keyword">extends</span> <span class="title">OneSequenceGestureRecognizer</span> </span>&#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  <span class="keyword">void</span> addAllowedPointer(PointerEvent event) &#123;</span><br><span class="line">    startTrackingPointer(event.pointer, event.transform);</span><br><span class="line">    ...</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">OneSequenceGestureRecognizer</span> <span class="keyword">extends</span> <span class="title">GestureRecognizer</span> </span>&#123;</span><br><span class="line">  <span class="meta">@protected</span></span><br><span class="line">  <span class="keyword">void</span> startTrackingPointer(<span class="built_in">int</span> pointer, [Matrix4 transform]) &#123;</span><br><span class="line">    <span class="comment">// 这里向 GestureBinding 单例中添加了一个人 route，用于接受 pointer event</span></span><br><span class="line">    GestureBinding.instance.pointerRouter.addRoute(pointer, handleEvent, transform);</span><br><span class="line">    _trackedPointers.add(pointer);</span><br><span class="line">    <span class="keyword">assert</span>(!_entries.containsValue(pointer));</span><br><span class="line">    _entries[pointer] = _addPointerToArena(pointer);</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  GestureArenaEntry _addPointerToArena(<span class="built_in">int</span> pointer) &#123;</span><br><span class="line">    <span class="keyword">if</span> (_team != <span class="keyword">null</span>)</span><br><span class="line">      <span class="keyword">return</span> _team.add(pointer, <span class="keyword">this</span>);</span><br><span class="line">    <span class="comment">// 将当前手势识别器当做竞争者加入到竞争场</span></span><br><span class="line">    <span class="keyword">return</span> GestureBinding.instance.gestureArena.add(pointer, <span class="keyword">this</span>);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">GestureBinding</span> <span class="title">on</span> <span class="title">BindingBase</span> <span class="keyword">implements</span> <span class="title">HitTestable</span>, <span class="title">HitTestDispatcher</span>, <span class="title">HitTestTarget</span> </span>&#123;</span><br><span class="line">  </span><br><span class="line">    <span class="meta">@override</span> <span class="comment">// from HitTestTarget</span></span><br><span class="line">  <span class="keyword">void</span> handleEvent(PointerEvent event, HitTestEntry entry) &#123;</span><br><span class="line">    <span class="comment">// router 的分发在 GestureBinding 的 handleEvent 中</span></span><br><span class="line">    pointerRouter.route(event);</span><br><span class="line">    ...</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以在子类实现中看到，最后会向 <em>GestureBinding</em> 单例中注册接收 pointer event 用的 handler，并且在 <em>GestureBinding</em> 的竞技场管理员报名自己参与竞技。也就是到这为止，手势识别器已经可以收到 pointer event ，并且报名参加了手势竞争。</p>
+<h3 id="3-如何宣告胜利-失败"><a href="#3-如何宣告胜利-失败" class="headerlink" title="3. 如何宣告胜利/失败"></a>3. 如何宣告胜利/失败</h3><p>既然手势识别器可以收到 pointer event 了，那么它就可以随时宣告胜利/失败了，来看下这部分代码：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">DragGestureRecognizer</span> <span class="keyword">extends</span> <span class="title">OneSequenceGestureRecognizer</span> </span>&#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  <span class="keyword">void</span> handleEvent(PointerEvent event) &#123;</span><br><span class="line">    <span class="comment">//... 这里省略处理手势逻辑</span></span><br><span class="line">    <span class="comment">// 宣告胜利</span></span><br><span class="line">    resolve(GestureDisposition.accepted);</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="meta">@protected</span></span><br><span class="line">  <span class="meta">@mustCallSuper</span></span><br><span class="line">  <span class="keyword">void</span> resolve(GestureDisposition disposition) &#123;</span><br><span class="line">    <span class="keyword">final</span> <span class="built_in">List</span>&lt;GestureArenaEntry&gt; localEntries = <span class="built_in">List</span>&lt;GestureArenaEntry&gt;.from(_entries.values);</span><br><span class="line">    _entries.clear();</span><br><span class="line">    <span class="comment">// 遍历所有的竞技场，宣告胜利</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">final</span> GestureArenaEntry entry <span class="keyword">in</span> localEntries)</span><br><span class="line">      entry.resolve(disposition);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">GestureArenaEntry</span> </span>&#123;</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">void</span> resolve(GestureDisposition disposition) &#123;</span><br><span class="line">    _arena._resolve(_pointer, _member, disposition);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>上述代码是拖动识别器中宣告胜利的代码，宣告胜利后最后会调用到 <em>GestureArenaEntry</em> 中的 <em>resolve</em> 方法。这里 <em>DragGestureRecognizer</em> 会遍历所有的竞技场是因为它是一个 <em>OneSequenceGestureRecognizer</em>，如果存在多个手指触摸事件，会一起处理，要么一起胜利，要么一起失败。</p>
+<p>我们继续看下 <code>_arena._resolve(_pointer, _member, disposition)</code> 的实现：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">GestureArenaManager</span> </span>&#123;</span><br><span class="line">  <span class="comment">/// <span class="markdown">[pointer] 对应哪个指针事件流</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">[member] 宣告 胜利/失败 的竞争者</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">[disposition] 胜利/失败</span></span></span><br><span class="line">  <span class="keyword">void</span> _resolve(<span class="built_in">int</span> pointer, GestureArenaMember member, GestureDisposition disposition) &#123;</span><br><span class="line">    <span class="comment">// 先看下 pointer 对应的竞技场是否存在</span></span><br><span class="line">    <span class="comment">// 如果不存在说明当前竞技场已经有胜利者了</span></span><br><span class="line">    <span class="keyword">final</span> _GestureArena state = _arenas[pointer];</span><br><span class="line">    <span class="keyword">if</span> (state == <span class="keyword">null</span>)</span><br><span class="line">      <span class="keyword">return</span>; <span class="comment">// This arena has already resolved.</span></span><br><span class="line">    <span class="keyword">assert</span>(_debugLogDiagnostic(pointer, <span class="string">&#x27;<span class="subst">$&#123; disposition == GestureDisposition.accepted ? <span class="string">&quot;Accepting&quot;</span> : <span class="string">&quot;Rejecting&quot;</span> &#125;</span>: <span class="subst">$member</span>&#x27;</span>));</span><br><span class="line">    <span class="keyword">assert</span>(state.members.contains(member));</span><br><span class="line">    <span class="keyword">if</span> (disposition == GestureDisposition.rejected) &#123;</span><br><span class="line">      <span class="comment">// 如果是宣告失败，从竞技场中移除该竞技者</span></span><br><span class="line">      state.members.remove(member);</span><br><span class="line">      <span class="comment">// 会掉竞技者的 竞争失败 函数</span></span><br><span class="line">      member.rejectGesture(pointer);</span><br><span class="line">      <span class="comment">// 因为宣告失败了，有可能会出现只剩下一个竞技者的情况，这里走一遍之前分析的逻辑（详细分析往前看）</span></span><br><span class="line">      <span class="keyword">if</span> (!state.isOpen)</span><br><span class="line">        _tryToResolveArena(pointer, state);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="keyword">assert</span>(disposition == GestureDisposition.accepted);</span><br><span class="line">      <span class="keyword">if</span> (state.isOpen) &#123;</span><br><span class="line">        <span class="comment">// 如果 state 还处于 open 状态，也就是当前竞争者在 down 事件的时候就宣告胜利了，把它</span></span><br><span class="line">        <span class="comment">// 设置为 激进胜利者（关于它的处理看之前的分析）</span></span><br><span class="line">        state.eagerWinner ??= member;</span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">assert</span>(_debugLogDiagnostic(pointer, <span class="string">&#x27;Self-declared winner: <span class="subst">$member</span>&#x27;</span>));</span><br><span class="line">        <span class="comment">// 宣告当前 member 为胜利者，其它 member 为失败者</span></span><br><span class="line">        _resolveInFavorOf(pointer, state, member);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>通过源码分析可以知道，<code>_arena._resolve(_pointer, _member, disposition)</code> 会让当前 <em>_member</em> 可能成为胜利者，为什么是可能呢？因为竞技场可能不存在，只要竞技场有胜利者，当前竞技场就会从 <em>GestureArenaManager</em> 移除，之后的竞技者来获取胜利的时候就发现没有竞技场了。</p>
+<p>到这里为止，关于手势指针事件相关的内容就都讲完了！源码分析并不是分析所有的源码，不过道路都一样，核心功能都已经分析了，其它的可以自己需要的时候去分析。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Flutter/" rel="tag"># Flutter</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/1597571250707/" rel="prev" title="Flutter 手势事件解析（一）">
+                  <i class="fa fa-chevron-left"></i> Flutter 手势事件解析（一）
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/1599449233776/" rel="next" title="谈谈 Flutter 的 build">
+                  谈谈 Flutter 的 build <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">VoidDog</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

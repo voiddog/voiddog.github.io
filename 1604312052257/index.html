@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"blog.voiddog.org","root":"/","scheme":"Pisces","version":"8.0.0-rc.5","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false};
+  </script>
+
+  <meta name="description" content="1、前言Flutter 所使用的 dart 语言具有垃圾回收机制，有垃圾回收就避免不了会内存泄漏。在 Android 平台上有个内存泄漏检测工具 LeakCanary ，它可以方便的在 debug 环境下检测当前页面是否泄漏。本文将会带你实现一个 flutter 可用的 LeakCanary，并讲述我是怎么用该工具检测出了 1.9.1 framework 上的两个泄漏。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Flutter 上的内存泄漏监控">
+<meta property="og:url" content="http://blog.voiddog.org/1604312052257/index.html">
+<meta property="og:site_name" content="爆裂吧现实">
+<meta property="og:description" content="1、前言Flutter 所使用的 dart 语言具有垃圾回收机制，有垃圾回收就避免不了会内存泄漏。在 Android 平台上有个内存泄漏检测工具 LeakCanary ，它可以方便的在 debug 环境下检测当前页面是否泄漏。本文将会带你实现一个 flutter 可用的 LeakCanary，并讲述我是怎么用该工具检测出了 1.9.1 framework 上的两个泄漏。">
+<meta property="og:locale">
+<meta property="og:image" content="https://s1.ax1x.com/2020/03/31/GMbQYt.png">
+<meta property="og:image" content="https://s1.ax1x.com/2020/03/31/GMbq7d.png">
+<meta property="og:image" content="https://s1.ax1x.com/2020/06/10/toDJAS.jpg">
+<meta property="article:published_time" content="2020-11-02T18:13:18.000Z">
+<meta property="article:modified_time" content="2020-11-02T10:15:43.957Z">
+<meta property="article:author" content="VoidDog">
+<meta property="article:tag" content="Flutter">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://s1.ax1x.com/2020/03/31/GMbQYt.png">
+
+
+<link rel="canonical" href="http://blog.voiddog.org/1604312052257/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>Flutter 上的内存泄漏监控 | 爆裂吧现实</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175543622-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-175543622-1');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">爆裂吧现实</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">不想死就早点睡</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1%E3%80%81%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">1、前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2%E3%80%81Dart-%E4%B8%AD%E7%9A%84%E5%BC%B1%E5%BC%95%E7%94%A8"><span class="nav-number">2.</span> <span class="nav-text">2、Dart 中的弱引用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3%E3%80%81Dart-vm-service"><span class="nav-number">3.</span> <span class="nav-text">3、Dart vm_service</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ObjRef-Obj-%E5%92%8C-id-%E7%9A%84%E4%BD%9C%E7%94%A8"><span class="nav-number">3.1.</span> <span class="nav-text">ObjRef, Obj 和 id 的作用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8-vm-service-%E6%9C%8D%E5%8A%A1"><span class="nav-number">3.2.</span> <span class="nav-text">如何使用 vm_service 服务</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4%E3%80%81%E6%B3%84%E6%BC%8F%E6%A3%80%E6%B5%8B%E5%AE%9E%E7%8E%B0"><span class="nav-number">4.</span> <span class="nav-text">4、泄漏检测实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#IsolateId-%E7%9A%84%E8%8E%B7%E5%8F%96"><span class="nav-number">4.1.</span> <span class="nav-text">IsolateId 的获取</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ObjectId-%E7%9A%84%E8%8E%B7%E5%8F%96"><span class="nav-number">4.2.</span> <span class="nav-text">ObjectId 的获取</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%B9%E8%B1%A1%E6%B3%84%E6%BC%8F%E5%88%A4%E6%96%AD"><span class="nav-number">4.3.</span> <span class="nav-text">对象泄漏判断</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BC%BA%E5%88%B6-GC"><span class="nav-number">4.4.</span> <span class="nav-text">强制 GC</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5%E3%80%81%E8%8E%B7%E5%8F%96%E6%B3%84%E6%BC%8F%E8%B7%AF%E5%BE%84"><span class="nav-number">5.</span> <span class="nav-text">5、获取泄漏路径</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Expando-%E6%8C%81%E6%9C%89%E9%97%AE%E9%A2%98"><span class="nav-number">5.1.</span> <span class="nav-text">Expando 持有问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#id-%E8%BF%87%E6%9C%9F%E9%97%AE%E9%A2%98"><span class="nav-number">5.2.</span> <span class="nav-text">id 过期问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6%E3%80%811-9-1-framework-%E4%B8%8A%E7%9A%84%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F"><span class="nav-number">6.</span> <span class="nav-text">6、1.9.1 framework 上的内存泄漏</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E7%BC%A9%E7%9F%AD%E5%BC%95%E7%94%A8%E9%93%BE"><span class="nav-number">6.1.</span> <span class="nav-text">如何缩短引用链</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%86%E7%B1%BB"><span class="nav-number">6.1.1.</span> <span class="nav-text">分类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%81%9A%E5%90%88"><span class="nav-number">6.1.2.</span> <span class="nav-text">聚合</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%92%E6%9F%A5-1-9-1-framework-%E6%B3%84%E6%BC%8F%E6%A0%B9%E6%BA%90"><span class="nav-number">6.2.</span> <span class="nav-text">排查 1.9.1 framework 泄漏根源</span></a></li></ol></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="VoidDog"
+      src="https://i.imgur.com/rO7BKq2.png">
+  <p class="site-author-name" itemprop="name">VoidDog</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/voiddog" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/qgx446738721" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;qgx446738721" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.facebook.com/voiddog" title="Facebook → https:&#x2F;&#x2F;www.facebook.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-facebook fa-fw"></i>Facebook</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/voiddog" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-instagram fa-fw"></i>Instagram</a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://blog.voiddog.org/1604312052257/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://i.imgur.com/rO7BKq2.png">
+      <meta itemprop="name" content="VoidDog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爆裂吧现实">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Flutter 上的内存泄漏监控
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2020-11-02 18:13:18 / Modified: 10:15:43" itemprop="dateCreated datePublished" datetime="2020-11-02T18:13:18+00:00">2020-11-02</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Flutter/" itemprop="url" rel="index"><span itemprop="name">Flutter</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <h2 id="1、前言"><a href="#1、前言" class="headerlink" title="1、前言"></a>1、前言</h2><p>Flutter 所使用的 dart 语言具有垃圾回收机制，有垃圾回收就避免不了会内存泄漏。在 Android 平台上有个内存泄漏检测工具 <a target="_blank" rel="noopener" href="https://github.com/square/leakcanary">LeakCanary</a> ，它可以方便的在 debug 环境下检测当前页面是否泄漏。本文将会带你实现一个 flutter 可用的 LeakCanary，并讲述我是怎么用该工具检测出了 1.9.1 framework 上的两个泄漏。</p>
+<a id="more"></a>
+
+<h2 id="2、Dart-中的弱引用"><a href="#2、Dart-中的弱引用" class="headerlink" title="2、Dart 中的弱引用"></a>2、Dart 中的弱引用</h2><p>在具有垃圾回收的语言中，弱引用是检测对象是否泄漏的一个好方式。我们只需弱引用观测对象，等待下次 <strong>Full GC</strong>，如果 gc 之后对象为 null，说明被回收了，如果不为 null 就可能是泄漏了</p>
+<p>Dart 语言中也有着弱引用，它叫 <code>Expando&lt;T&gt;</code> ，看下它的 api：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Expando</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line">  <span class="keyword">external</span> T <span class="keyword">operator</span> [](<span class="built_in">Object</span> object);</span><br><span class="line">  <span class="keyword">external</span> <span class="keyword">void</span> <span class="keyword">operator</span> []=(<span class="built_in">Object</span> object, T value);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>你可能会好奇上述代码弱引用体现在哪里呢？其实是在 <code>expando[key]=value</code> 这个赋值语句上。Expando 会以弱引用的方式持有 key，这里就是弱引用的地方。</p>
+<p>那么问题来了，这个 <code>Expando</code> 弱引用持有的是 key，但是本身又没有提供 <code>getKey()</code> 这样的 api，我们就无从下手去得知 key 这个对象是否被回收了。</p>
+<p>为了解决这个问题，我们来看下 <code>Expando</code> 的具体实现，具体的代码在 <a target="_blank" rel="noopener" href="https://github.com/dart-lang/sdk/blob/master/sdk/lib/_internal/vm/lib/expando_patch.dart">expando_path.dart</a>：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@path</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Expando</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">  T <span class="keyword">operator</span> [](Objet object) &#123;</span><br><span class="line">    <span class="keyword">var</span> mask = _size - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">var</span> idx = object._identityHashCode &amp; mask;</span><br><span class="line">    <span class="comment">// sdk 是把 key 放到了一个 _data 数组内，这个 wp 是个 _WeakProperty</span></span><br><span class="line">    <span class="keyword">var</span> wp = _data[idx];</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ... 省略部分代码</span></span><br><span class="line">    <span class="keyword">return</span> wp.value;</span><br><span class="line">       <span class="comment">// ... 省略部分代码</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>注意</strong>: 此 patch 代码不适用于 web 平台</p>
+</blockquote>
+<p>我们可以发现这个 key 对象是放到了 <code>_data</code> 数组内，用了一个 <code>_WeakProperty</code> 来包裹，那么这个 <code>_WeakProperty</code> 就是关键类了，看下它实现，代..码在 <a target="_blank" rel="noopener" href="https://github.com/dart-lang/sdk/blob/master/sdk_nnbd/lib/_internal/vm/lib/weak_property.dart">weak_property.dart</a>：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@pragma</span>(<span class="string">&quot;vm:entry-point&quot;</span>)</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">_WeakProperty</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">get</span> key =&gt; _getKey();</span><br><span class="line">  <span class="comment">// ... 省略部分代码</span></span><br><span class="line">  _getKey() native <span class="string">&quot;WeakProperty_getKey&quot;</span>;</span><br><span class="line">  <span class="comment">// ... 省略部分代码</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个类有我们想要的 <code>key</code>，可以用于判断对象是否还在！</p>
+<p>怎么获取这种私有属性和变量呢？flutter 中的 dart 是不支持反射的（为了优化打包 size，关闭了反射），有没有其它办法来获取到这种私有属性呢？</p>
+<p>答案肯定是 <strong>“有”</strong>，为了解决上述问题，我这边介绍一个 dart 自带的服务，<strong>Dart VM Service</strong>。</p>
+<h2 id="3、Dart-vm-service"><a href="#3、Dart-vm-service" class="headerlink" title="3、Dart vm_service"></a>3、Dart vm_service</h2><p><a target="_blank" rel="noopener" href="https://github.com/dart-lang/sdk/blob/master/runtime/vm/service/service.md">Dart VM Service</a> （后面简称 vm_service）是 dart 虚拟机内部提供的一套 web 服务，数据传输协议是 JSON-RPC 2.0。不过我们并不需要要自己去实现数据请求解析，官方已经写好了一个可用的 dart sdk 给我们用 <a target="_blank" rel="noopener" href="https://pub.dev/packages/vm_service">vm_service</a>。</p>
+<h3 id="ObjRef-Obj-和-id-的作用"><a href="#ObjRef-Obj-和-id-的作用" class="headerlink" title="ObjRef, Obj 和 id 的作用"></a>ObjRef, Obj 和 id 的作用</h3><p>先介绍 vm_service 中的核心内容：<strong>ObjRef、Obj、id</strong></p>
+<p>vm_service 返回的数据主要分为两大类， ObjRef（引用类型） 和 Obj（对象实例类型）。其中 Obj 完整的包含了 ObjRef 的数据，并在其基础上增加了额外信息（ObjRef 只包含了一些基本信息，例如：id，name…）。</p>
+<p>基本所有的 api 返回的数据都是 ObjRef，当 ObjRef 里面的信息满足不了你的时候，再调用 <code>getObject(,,,)</code>来获取 Obj。</p>
+<p><strong>关于 id：</strong> Obj 和 ObjRef 都含有 id，这个 id 是对象实例在 vm_service 里面的一个标识符，vm_service 几乎所有的 api 都需要通过 id 来操作，比如：<code>getInstance(isolateId, classId, ...)</code>、<code>getIsolate(isolateId)</code>、<code>getObject(isolateId, objectId, ...)</code>。</p>
+<h3 id="如何使用-vm-service-服务"><a href="#如何使用-vm-service-服务" class="headerlink" title="如何使用 vm_service 服务"></a>如何使用 vm_service 服务</h3><p>vm_service 在启动的时候会在本地开启一个 websocket 服务，服务 uri 可以在 <code>dart:developer</code> 中获得:</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> <span class="string">&#x27;dart:developer&#x27;</span>;</span><br><span class="line"></span><br><span class="line">Future&lt;<span class="built_in">String</span>&gt; getObserverUri() <span class="keyword">async</span> &#123;</span><br><span class="line">  <span class="keyword">return</span> (<span class="keyword">await</span> Service.getInfo()).serverUri.toString();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p>有了 uri 之后我们就可以使用 vm_service 的服务了，官方有一个帮我们写好的 sdk <a target="_blank" rel="noopener" href="https://pub.dev/packages/vm_service">vm_service</a> ，直接使用内部的 <code>vmServiceConnectUri</code> 就可以获得一个可用的 <code>VmService</code> 对象。</p>
+<blockquote>
+<p><code>vmServiceConnectUri</code> 的参数需要是一个 ws 协议的 uri，默认获取的是 http 协议，需要借助 <code>convertToWebSocketUrl</code>方法转化下</p>
+</blockquote>
+<h2 id="4、泄漏检测实现"><a href="#4、泄漏检测实现" class="headerlink" title="4、泄漏检测实现"></a>4、泄漏检测实现</h2><p>有了 vm_service 之后，我们就可以用它来弥补 <code>Expando</code> 的不足了。按照之前的分析，我们要获 <code>Expando</code> 的私有字段 <code>_data</code>， 这里可以使用 <a target="_blank" rel="noopener" href="https://github.com/dart-lang/sdk/blob/master/runtime/vm/service/service.md#getobject">getObject(isolateId, objectId)</a> api，它的返回值是 <a target="_blank" rel="noopener" href="https://github.com/dart-lang/sdk/blob/master/runtime/vm/service/service.md#instance">Instance</a>，内部的 <code>fields</code> 字段保存了当前对象的所有属性。这样我们就可以遍历属性获取到 <code>_data</code>，来达到反射的效果。</p>
+<p>现在的问题是 api 参数中的 isoateId 和 objectId 是啥，根据我前面介绍的 id 相关内容，它是对象在 vm_serive 中的标识符。也就是我们只有通过 vm_service 才可以获取到这两个参数。</p>
+<h3 id="IsolateId-的获取"><a href="#IsolateId-的获取" class="headerlink" title="IsolateId 的获取"></a>IsolateId 的获取</h3><p>Isolate（隔离区）是 dart 里面的一个非常重要的概念，<strong>基本上</strong>一个 isolate 相当于一个线程，但是和我们平常接触的线程不同的是：不同 isolate 之间的内存不共享。</p>
+<p>因为有了上述特性，我们在查找对象的时候也要带上 isolateId。</p>
+<p>那么怎么筛选出我们想要的 isolate 呢？这里问题就可以转化为如何获取到当前 Isolate 在 <em>vm_service</em> 中的 id，这里 <code>dart:developer</code> 包内有根据 isolate 转 id 的方法，直接使用即可：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> <span class="string">&#x27;dart:isolate&#x27;</span> <span class="keyword">as</span> isolate;</span><br><span class="line"><span class="keyword">import</span> <span class="string">&#x27;dart:developer&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="built_in">String</span> getCurrentIsolateId() =&gt; Service.getIsolateID(isolate.Isolate.current);</span><br></pre></td></tr></table></figure>
+
+<h3 id="ObjectId-的获取"><a href="#ObjectId-的获取" class="headerlink" title="ObjectId 的获取"></a>ObjectId 的获取</h3><p>我们要获取的 objectId 就是 expando 在 vm_service 中的 id，这里可以把问题扩展下：</p>
+<p><strong>如何获取指定对象在 vm_service 中的 id？</strong> </p>
+<p>这个问题比较麻烦，vm_service 中没有实例对象和 id 转换的 api，有个 <code>getInstance(isolateId, classId, limit)</code> 的 api，可以获取某个 classId 的所有子类实例，先不说如何获取到想要的 classId，此 api 的性能和 limit 都让人担忧。</p>
+<p>没有好办法了吗？其实我们可以借助 Library 的 <strong>顶级函数（直接写在当前文件，不在类中，例如 main 函数）</strong> 来实现该功能。</p>
+<blockquote>
+<p>简单说明下 Library 是什么东西，dart 中的分包管理是根据 Library 来的，同一个 Library 内的类名不能重复，一般情况下一个 dart 文件就是一个 Library，当然也有例外，比如：part of 和 export</p>
+</blockquote>
+<p>vm_service 有个 <a target="_blank" rel="noopener" href="https://github.com/dart-lang/sdk/blob/master/runtime/vm/service/service.md#invoke">invoke(isolateId, targetId, selector, argumentIds)</a> api，可以用来执行某个常规函数（getter、setter、构造函数、私有函数属于非常规函数），其中如果 targetId 是 Library 的 id，那么 invoke 执行的就是 Library 的顶级函数。</p>
+<p>有了 invoke Library 顶级函数的路径，就可以用它实现对象转id 了，代码如下：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">int</span> _key = <span class="number">0</span>;</span><br><span class="line"><span class="comment">/// <span class="markdown">顶级函数，必须常规方法，生成 key 用</span></span></span><br><span class="line"><span class="built_in">String</span> generateNewKey() &#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="string">&quot;<span class="subst">$&#123;++_key&#125;</span>&quot;</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">Map</span>&lt;<span class="built_in">String</span>, <span class="built_in">dynamic</span>&gt; _objCache = <span class="built_in">Map</span>();</span><br><span class="line"><span class="comment">/// <span class="markdown">顶级函数，根据 key 返回指定对象</span></span></span><br><span class="line"><span class="built_in">dynamic</span> keyToObj(<span class="built_in">String</span> key) &#123;</span><br><span class="line">  <span class="keyword">return</span> _objCache[key];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/// <span class="markdown">对象转 id</span></span></span><br><span class="line"><span class="built_in">String</span> obj2Id(VMService service, <span class="built_in">dynamic</span> obj) <span class="keyword">async</span> &#123;</span><br><span class="line">  </span><br><span class="line">  <span class="comment">// 找到 isolateId。这里的方法就是前面讲的 isolateId 获取方法</span></span><br><span class="line">  <span class="built_in">String</span> isolateId = findMainIsolateId();</span><br><span class="line">  <span class="comment">// 找到当前 Library。这里可以遍历 isolate 的 libraries 字段</span></span><br><span class="line">  <span class="comment">// 根据 uri 筛选出当前 Library 即可，具体不展开了</span></span><br><span class="line">  <span class="built_in">String</span> libraryId = findLibraryId();</span><br><span class="line">  </span><br><span class="line">  <span class="comment">// 用 vm service 执行 generateNewKey 函数</span></span><br><span class="line">  InstanceRef keyRef = <span class="keyword">await</span> service.invoke(</span><br><span class="line">    isolateId,</span><br><span class="line">    libraryId,</span><br><span class="line">    <span class="string">&quot;generateNewKey&quot;</span>,</span><br><span class="line">    <span class="comment">// 无参数，所以是空数组</span></span><br><span class="line">    []</span><br><span class="line">  );</span><br><span class="line">  <span class="comment">// 获取 keyRef 的 String 值</span></span><br><span class="line">  <span class="comment">// 这是唯一一个能把 ObjRef 类型转为数值的 api</span></span><br><span class="line">  <span class="built_in">String</span> key = keyRef.valueAsString;</span><br><span class="line">  </span><br><span class="line">  _objCache[key] = obj;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="comment">// 调用 keyToObj 顶级函数，传入 key，获取 obj</span></span><br><span class="line">    InstanceRef valueRef = <span class="keyword">await</span> service.invoke(</span><br><span class="line">      isolateId,</span><br><span class="line">      libraryId,</span><br><span class="line">      <span class="string">&quot;keyToObj&quot;</span>,</span><br><span class="line">      <span class="comment">// 这里注意，vm_service 需要的是 id，不是值</span></span><br><span class="line">      [keyRef.id]</span><br><span class="line">    )</span><br><span class="line">    <span class="comment">// 这里的 id 就是 obj 对应的 id</span></span><br><span class="line">    <span class="keyword">return</span> valueRef.id;</span><br><span class="line">  &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">    _objCache.remove(key);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="对象泄漏判断"><a href="#对象泄漏判断" class="headerlink" title="对象泄漏判断"></a>对象泄漏判断</h3><p>现在我们已经可以获取到 expando 实例在 vm_service 中的 id 了，接下来就简单了</p>
+<p>先通过 vm_service 获取到 <code>Instance</code>，遍历里面的 <code>fields</code> 属性，找到 <code>_data</code> 字段（注意 <code>_data</code> 是 ObjRef 类型），用同样的办法把 <code>_data</code> 字段转成 <code>Instance</code> 类型（_data 是个数组，Obj 里面有数组的 child 信息）。</p>
+<p>遍历 <code>_data</code> 字段，如果都是 null，表明我们观测的 key 对象已经被释放了。如果 item 不为 null，再次把 item   转为 <code>Instance</code> 对象，取它的 <code>propertyKey</code> （因为 item 是 _WeakProperty 类型，<code>Instance</code> 里面特地为 _WeakProperty 开了这个字段）。</p>
+<h3 id="强制-GC"><a href="#强制-GC" class="headerlink" title="强制 GC"></a>强制 GC</h3><p>文章开头说到，如果要判断对象是否泄漏，需要在 Full GC 之后判断弱引用是否还在。有没有办法手动触发 gc 呢？</p>
+<p>答案是有的，vm_service 虽然没有强制 gc 的 api，但是 dev_tools 的内存图标右上角有个 GC 的按钮，我们仿照着它来操作就行！dev_tools 是调用了 vm_service 的 <a target="_blank" rel="noopener" href="https://github.com/dart-lang/sdk/blob/master/runtime/vm/service/service.md#getallocationprofile">getAllocationProfile(isolateId, gc: true)</a> api 来实现手动 gc 的。</p>
+<p>至于这个 api 触发的是不是 FULL GC，并没有说明，我测试触发的都是 FULL GC，如果要确定在 FULL GC 之后检测泄漏，可以监听 gc 事件流，vm_service 提供了该功能。</p>
+<p>至此为止，我们已经可以实现泄漏的监控，而且可以获取到泄漏目标在 vm_serive 中的 id 了，下面就开始获取分析泄漏路径。</p>
+<h2 id="5、获取泄漏路径"><a href="#5、获取泄漏路径" class="headerlink" title="5、获取泄漏路径"></a>5、获取泄漏路径</h2><p>关于泄漏路径的获取，vm_service 提供了一个 api 叫 <a target="_blank" rel="noopener" href="https://github.com/dart-lang/sdk/blob/master/runtime/vm/service/service.md#getretainingpath">getRetainingPath(isolateId, objectId, limit)</a>。直接使用此 api 就可以获取到泄漏对象到 gc root 的引用链信息，是不是感觉很简单？不过光这样可不行，因为它有以下几个坑点：</p>
+<h3 id="Expando-持有问题"><a href="#Expando-持有问题" class="headerlink" title="Expando 持有问题"></a>Expando 持有问题</h3><p>如果在执行 <code>getRetainingPath</code> 的时候，泄漏对象被 expando 持有的话会产生以下两个问题</p>
+<ul>
+<li>因为该 api 返回的引用链只有一条，返回的引用链会经过 expando，导致无法获取真正的泄漏节点信息</li>
+<li>在 arm 设备上会出现 native crash，具体错误出现在 utf8 字符解码上</li>
+</ul>
+<p>此问题很好解决，注意下在前面泄漏检测完之后，释放掉 expando 就行。</p>
+<h3 id="id-过期问题"><a href="#id-过期问题" class="headerlink" title="id 过期问题"></a>id 过期问题</h3><p>Instance 类型的 id 和 Class、Library、Isolate 这种 id 不一样，是会过期的。vm_service 中对于此类临时 id 的缓存容量默认大小是 8192，是一个循环队列。</p>
+<p>因为此问题的存在，我们在检测到泄漏的时候，不能只保存泄漏对象的 id，需要保存原对象，而且不能强引用持有对象。所以这里我们还是需要使用 expando 来保存我们检测到的泄漏对象，等到需要分析泄漏路径的时候，再把对象专为 id。</p>
+<h2 id="6、1-9-1-framework-上的内存泄漏"><a href="#6、1-9-1-framework-上的内存泄漏" class="headerlink" title="6、1.9.1 framework 上的内存泄漏"></a>6、1.9.1 framework 上的内存泄漏</h2><p>完成了泄漏检测和路径获取之后，得到了一个简陋的 leakcanary 工具。当我在 1.9.1 版本的 framework 下测试此工具的时候发现，<strong>我观测一个页面它就泄漏一个页面！！！</strong></p>
+<blockquote>
+<p>通过 dev_tools dump 出来的对象来看，的确泄漏了！</p>
+</blockquote>
+<p>也就是 1.9.1 framework 里面存在着泄漏，而且此泄漏会泄漏整个页面。</p>
+<p>接下来开始排查泄漏原因，这里就碰到一个问题：泄漏路径太长。。。<code>getRetainingPath</code> 返回的链路长度有 300+，排查了一下午也没有找到问题根源。</p>
+<p>结论：直接根据 vm_service 返回的数据是很难分析问题来源的，需要对泄漏路径的信息二次处理下。</p>
+<h3 id="如何缩短引用链"><a href="#如何缩短引用链" class="headerlink" title="如何缩短引用链"></a>如何缩短引用链</h3><p>首先看下泄漏路径为什么会这么长，通过观测返回的链路后发现，绝大部分的节点都是 flutter UI 组件节点（例如：widget、element、state、renderObject）。</p>
+<p>也就是说引用链经过了 flutter 的组件树，玩过 flutter 的应该都知道 flutter 组件树的层次是非常深的。既然引用链长的原因是因为包含了组件树，而且组件树基本都是成块出现的，那我们只要把引用链中的节点根据类型来分类、聚合，就可以大幅缩短泄漏路径了。</p>
+<h4 id="分类"><a href="#分类" class="headerlink" title="分类"></a>分类</h4><p>根据 flutter 的组件类型，将节点分为以下几种类型：</p>
+<ul>
+<li>element：对应 <code>Element</code> 节点</li>
+<li>widget：对应 <code>Widget</code> 节点</li>
+<li>renderObject：对应 <code>RenderObject </code>节点</li>
+<li>state：对应 <code>State&lt;T extends StatefulWdget&gt;</code> 节点</li>
+<li>collection：对应集合类型节点，例如：List、Map、Set</li>
+<li>other：对应其它节点</li>
+</ul>
+<h4 id="聚合"><a href="#聚合" class="headerlink" title="聚合"></a>聚合</h4><p>节点的分类做好了之后，就可以把相同类型的节点聚合一下。这里提下我的聚合方式</p>
+<p>把 collection 类型的节点看成了连接节点，相邻的相同节点合并到一个集合内，如果两个相同类型的集合中间是通过 collection 节点相连的，就继续把这两个集合合并成一个集合，递归进行</p>
+<blockquote>
+<p>通过 <strong>分类-聚合</strong> 的处理后，原先 300+ 的链路长度，可以缩短为 100+。</p>
+</blockquote>
+<p>继续排查 1.9.1 framework 的泄漏问题，路径虽然缩短了，可以找到问题大致出现在 <code>FocusManager</code> 节点上！但是具体问题还是难以定位，主要有以下两点：</p>
+<ul>
+<li><strong>引用链节点缺少代码位置</strong>：因为 <code>RetainingObject</code> 数据中只有 parentField、parentIndex 和 parentKey 三个字段来表示当前对象引用下一个对象的信息，通过该信息找代码位置效率低下</li>
+<li><strong>无法知道当前 flutter 组件节点的信息</strong>：比如 Text 的文本信息，element 所在的 widget 是啥，state 的生命周期状态，当前组件属于哪个页面。。等等</li>
+</ul>
+<p>介于上述两个痛点，还需要对泄漏节点的信息做扩展处理：</p>
+<ul>
+<li><strong>代码位置</strong>：节点的引用代码位置其实只需要解析 parentField 就行，通过 vm_serive 解析 class，取内部的 field，找到对应的 script 等信息。此方法可以获取到源码</li>
+<li><strong>组件节点信息</strong>：flutter 的 UI 组件都是继承自 <code>Diagnosticable</code>，也就是只要是 <code>Diagnosticable</code> 类型的节点都可获取到非常详细的信息（dev_tools 调试时候，组件树信息就是通过 <code>Diagnosticable.debugFillProperties</code> 方法获取的）。除了这个还需要扩展当前组件所在 route 的信息，这个很重要，判断组件所在页面用</li>
+</ul>
+<h3 id="排查-1-9-1-framework-泄漏根源"><a href="#排查-1-9-1-framework-泄漏根源" class="headerlink" title="排查 1.9.1 framework 泄漏根源"></a>排查 1.9.1 framework 泄漏根源</h3><p>通过上述的种种优化后，我得到了下面这个工具，在两个 <code>_InkResponseState</code> 节点中发现了问题：</p>
+<img src="https://s1.ax1x.com/2020/03/31/GMbQYt.png" style="zoom:40%;" />
+
+<p>泄漏路径中有两个 <code>_InkResponseState</code> 节点所属的 route 信息不同，表明这两个节点在两个不同的页面中。顶部 <code>_InkResponseState</code> 的描述信息显示 lifecycle not mounted，说明组件已经销毁了，但是还是被 <code>FocusManager</code> 引用着！问题出现在这，来看下这部分代码</p>
+<p><img src="https://s1.ax1x.com/2020/03/31/GMbq7d.png"></p>
+<p>代码中可以明显的看到 addListener 时候对 <code>StatefulWidget</code> 的生命周期理解错误。<code>didChangeDependencies</code> 是会多次调用的，<code>dispose</code> 只会调用一次，所以这里就会出现 listener 移除不干净的情况。</p>
+<p>修复了上述泄漏之后，发现还有一处泄漏。排查后发现泄漏源在 <code>TransitionRoute</code> 中：</p>
+<p><img src="https://s1.ax1x.com/2020/06/10/toDJAS.jpg"></p>
+<p>当打开一个新页面的时候，该页面的 Route（也就是代码中的 nextRoute）会被前一个页面的 animation 所持有，如果页面跳转都是 TransitionRoute，那么所有的 Route 都会泄漏 ！</p>
+<blockquote>
+<p>好消息是以上泄漏都在 1.12 版本之后修复了</p>
+</blockquote>
+<p>修复完上述两个泄漏之后，再次测试，Route 和 Widget 都可以回收了，至此 1.9.1 framework 排查完毕。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Flutter/" rel="tag"># Flutter</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/1600660316174/" rel="prev" title="谈谈 Flutter 的页面">
+                  <i class="fa fa-chevron-left"></i> 谈谈 Flutter 的页面
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">VoidDog</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

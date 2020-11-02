@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"blog.voiddog.org","root":"/","scheme":"Pisces","version":"8.0.0-rc.5","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false};
+  </script>
+
+  <meta name="description" content="一、前言flutter 中的 build(context) 算是我们开发 flutter 接触最多的一个函数，不管是大到页面，还是小到一个文本，都需要通过 build(context) 来构建，所以这个 build 函数的调用将会非常频繁。 所以对我们开发者来说，熟悉 build 函数的调用时机，了解某个操作会让哪些 widget 执行 build 是非常重要的。当然这不是一个立马可以学会的东西，">
+<meta property="og:type" content="article">
+<meta property="og:title" content="谈谈 Flutter 的 build">
+<meta property="og:url" content="http://blog.voiddog.org/1599449233776/index.html">
+<meta property="og:site_name" content="爆裂吧现实">
+<meta property="og:description" content="一、前言flutter 中的 build(context) 算是我们开发 flutter 接触最多的一个函数，不管是大到页面，还是小到一个文本，都需要通过 build(context) 来构建，所以这个 build 函数的调用将会非常频繁。 所以对我们开发者来说，熟悉 build 函数的调用时机，了解某个操作会让哪些 widget 执行 build 是非常重要的。当然这不是一个立马可以学会的东西，">
+<meta property="og:locale">
+<meta property="og:image" content="https://s1.ax1x.com/2020/09/07/wn2gbV.png">
+<meta property="article:published_time" content="2020-09-07T11:21:23.000Z">
+<meta property="article:modified_time" content="2020-11-02T10:15:43.961Z">
+<meta property="article:author" content="VoidDog">
+<meta property="article:tag" content="Flutter">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://s1.ax1x.com/2020/09/07/wn2gbV.png">
+
+
+<link rel="canonical" href="http://blog.voiddog.org/1599449233776/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>谈谈 Flutter 的 build | 爆裂吧现实</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175543622-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-175543622-1');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">爆裂吧现实</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">不想死就早点睡</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">一、前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E5%87%A0%E4%B8%AA%E9%97%AE%E9%A2%98"><span class="nav-number">2.</span> <span class="nav-text">二、几个问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E7%9F%A5%E8%AF%86%E7%82%B9%EF%BC%9A"><span class="nav-number">3.</span> <span class="nav-text">三、知识点：</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-widget-%E7%9A%84-build-%E5%87%BD%E6%95%B0%E6%98%AF%E8%B0%81%E8%B0%83%E7%94%A8%E7%9A%84%EF%BC%9F"><span class="nav-number">3.1.</span> <span class="nav-text">1. widget 的 build 函数是谁调用的？</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#build-%E6%B5%81%E7%A8%8B%E6%A2%B3%E7%90%86"><span class="nav-number">3.1.1.</span> <span class="nav-text">build 流程梳理</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-Flutter-%E4%B8%AD%E7%9A%84%E5%A4%8D%E7%94%A8%E6%9C%BA%E5%88%B6"><span class="nav-number">3.2.</span> <span class="nav-text">2. Flutter 中的复用机制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E5%BD%93%E7%88%B6-widget-rebuild-%E7%9A%84%E6%97%B6%E5%80%99%EF%BC%8C%E5%AD%90-widget-%E6%98%AF%E5%90%A6%E4%BC%9A-rebuild%EF%BC%9F"><span class="nav-number">3.2.1.</span> <span class="nav-text">1. 当父 widget rebuild 的时候，子 widget 是否会 rebuild？</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E7%94%A8%E4%BA%86-StatefulWidget-%E5%B0%B1%E4%B8%80%E5%AE%9A%E5%8F%AF%E4%BB%A5%E4%BF%9D%E5%AD%98%E7%8A%B6%E6%80%81%E5%90%97%EF%BC%9F%E5%A6%82%E6%9E%9C%E4%B8%8D%E6%98%AF%EF%BC%8C%E4%BB%80%E4%B9%88%E6%83%85%E5%86%B5%E4%B8%8B%E4%BC%9A%E4%B8%A2%E5%A4%B1%E7%8A%B6%E6%80%81%EF%BC%9F"><span class="nav-number">3.2.2.</span> <span class="nav-text">2. 用了 StatefulWidget 就一定可以保存状态吗？如果不是，什么情况下会丢失状态？</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-Flutter-%E4%B8%AD%E7%9A%84-diff-%E6%9C%BA%E5%88%B6-RenderObjectElement"><span class="nav-number">3.3.</span> <span class="nav-text">3. Flutter 中的 diff 机制 RenderObjectElement</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E6%80%BB%E7%BB%93"><span class="nav-number">4.</span> <span class="nav-text">四、总结</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E9%9A%8F%E6%97%B6%E8%80%83%E8%99%91-build-%E5%87%BD%E6%95%B0%E4%BC%9A%E8%A2%AB%E8%B0%83%E7%94%A8"><span class="nav-number">4.1.</span> <span class="nav-text">1. 随时考虑 build 函数会被调用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E5%8D%83%E4%B8%87%E4%B8%8D%E8%A6%81%E5%9C%A8-widget-%E4%B8%AD%E4%BF%9D%E5%AD%98%E6%95%B0%E6%8D%AE"><span class="nav-number">4.2.</span> <span class="nav-text">2. 千万不要在 widget 中保存数据</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%B1%80%E9%83%A8%E5%88%B7%E6%96%B0%E7%9A%84%E6%8A%80%E5%B7%A7-setState-%E4%B8%8B%E6%B2%89"><span class="nav-number">4.3.</span> <span class="nav-text">3. 局部刷新的技巧 setState(()&amp;#123;&amp;#125;) 下沉</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E4%BD%BF%E7%94%A8-key-%E6%9D%A5%E4%BF%9D%E6%8C%81%E5%A4%8D%E7%94%A8"><span class="nav-number">4.4.</span> <span class="nav-text">4. 使用 key 来保持复用</span></a></li></ol></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="VoidDog"
+      src="https://i.imgur.com/rO7BKq2.png">
+  <p class="site-author-name" itemprop="name">VoidDog</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/voiddog" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/qgx446738721" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;qgx446738721" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.facebook.com/voiddog" title="Facebook → https:&#x2F;&#x2F;www.facebook.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-facebook fa-fw"></i>Facebook</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/voiddog" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-instagram fa-fw"></i>Instagram</a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://blog.voiddog.org/1599449233776/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://i.imgur.com/rO7BKq2.png">
+      <meta itemprop="name" content="VoidDog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爆裂吧现实">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          谈谈 Flutter 的 build
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-09-07 11:21:23" itemprop="dateCreated datePublished" datetime="2020-09-07T11:21:23+00:00">2020-09-07</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-11-02 10:15:43" itemprop="dateModified" datetime="2020-11-02T10:15:43+00:00">2020-11-02</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Flutter/" itemprop="url" rel="index"><span itemprop="name">Flutter</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <h2 id="一、前言"><a href="#一、前言" class="headerlink" title="一、前言"></a>一、前言</h2><p>flutter 中的 <code>build(context)</code> 算是我们开发 flutter 接触最多的一个函数，不管是大到页面，还是小到一个文本，都需要通过 <code>build(context)</code> 来构建，所以这个 <em>build</em> 函数的调用将会非常频繁。</p>
+<p>所以对我们开发者来说，熟悉 <em>build</em> 函数的调用时机，了解某个操作会让哪些 widget 执行 <em>build</em> 是非常重要的。当然这不是一个立马可以学会的东西，因为不同组件的行为可能不一样，不过底层的原理都是相同的。</p>
+<p>读完本文后，你将对 flutter 的 build、diff 复用机制 有个全局性的掌握，文章有点长，可以先收藏了慢慢看。</p>
+<a id="more"></a>
+
+<h2 id="二、几个问题"><a href="#二、几个问题" class="headerlink" title="二、几个问题"></a>二、几个问题</h2><p>在开始了解 Flutter 的 build 之前，我先提几个问题：</p>
+<ol>
+<li>当父 widget 被 rebuild 的时候，请问子 widget 是否会被 rebuild？</li>
+<li>当你执行了一次 <code>setState(..)</code>，请问它的父 widget 是否会被 rebuild？</li>
+<li>用了 <code>StatefulWidget</code> 就一定可以保存状态吗？如果不是，什么情况下会丢失状态？</li>
+<li>当 widget 的 build 函数执行完成的时候，请问它的子 widget 的 build 函数是否执行了？</li>
+<li>flutter 中的三棵树（widget tree、element tree、render tree）是不是都是一一对应的？比如一个 widget 对应一个 element，一个 element 对应一个 render object？</li>
+</ol>
+<p>如果你对于上述问题的答案了如指掌，理解其中的细节，那么本文不是为你准备的，可以关掉页面走了。如果你都不知道，那么说明你对 flutter 里面的 build 和复用机制不了解，需要补习了。</p>
+<h2 id="三、知识点："><a href="#三、知识点：" class="headerlink" title="三、知识点："></a>三、知识点：</h2><h3 id="1-widget-的-build-函数是谁调用的？"><a href="#1-widget-的-build-函数是谁调用的？" class="headerlink" title="1. widget 的 build 函数是谁调用的？"></a>1. widget 的 build 函数是谁调用的？</h3><p>关于这个问题，我们先来看先平常用的 <code>StatelessWidget</code> 和 <code>StatefulWidget</code> 这两个组件，这两个 <em>widget</em> 的 <em>build</em> 函数分别在 <em>widget</em> 和 <em>state</em> 内，<em>build</em> 函数的调用者都是各自的 <em>element</em>（<code>StatelessElement</code> 和 <code>StatefulElement</code>）</p>
+<p>那么 <em>element</em> 的 <em>build</em> 是谁调用的呢？继续看下 <em>StatelessElement</em> 和 <em>StatefulElement</em> 的父类 <code>ComponentElement</code></p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// <span class="markdown">An [Element] that composes other [Element]s.</span></span></span><br><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">ComponentElement</span> <span class="keyword">extends</span> <span class="title">Element</span> </span>&#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  <span class="keyword">void</span> performRebuild() &#123;</span><br><span class="line">    Widget built;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="comment">// 这里调用 build 函数</span></span><br><span class="line">      built = build();</span><br><span class="line">      ...</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e, stack) &#123;</span><br><span class="line">      <span class="comment">// 这段代码我没省略，这里可以看到在 build 函数出现异常的时候</span></span><br><span class="line">      <span class="comment">// 会构建一个 error widget，这个其实就是显示红屏错误的 widget</span></span><br><span class="line">      built = ErrorWidget.builder(</span><br><span class="line">        _debugReportException(</span><br><span class="line">          ErrorDescription(<span class="string">&#x27;building <span class="subst">$this</span>&#x27;</span>),</span><br><span class="line">          e,</span><br><span class="line">          stack,</span><br><span class="line">          informationCollector: () <span class="keyword">sync</span>* &#123;</span><br><span class="line">            <span class="keyword">yield</span> DiagnosticsDebugCreator(DebugCreator(<span class="keyword">this</span>));</span><br><span class="line">          &#125;,</span><br><span class="line">        ),</span><br><span class="line">      );</span><br><span class="line">    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">      ...</span><br><span class="line">    &#125;</span><br><span class="line">    ...</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="meta">@protected</span></span><br><span class="line">  Widget build();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">Element</span> </span>&#123;</span><br><span class="line">  <span class="comment">/// <span class="markdown">Called by the [BuildOwner] when [BuildOwner.scheduleBuildFor] has been</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">called to mark this element dirty, by [mount] when the element is first</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">built, and by [update] when the widget has changed.</span></span></span><br><span class="line">  <span class="keyword">void</span> rebuild() &#123;</span><br><span class="line">    ...</span><br><span class="line">    performRebuild();</span><br><span class="line">       ...</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到调用顺序是 <code>Element.rebuild() -&gt; ComponentElement.performRebuild() -&gt; ComponentElement.build()</code>，那么 <em>Element.build()</em> 是谁调用的？</p>
+<p>这个在它的注释中有写: Called by the [BuildOwner] when [BuildOwner.scheduleBuildFor]，也就是由 <em>BuildOwner</em> 调用的（BuildOwner 在 <em>element tree</em> 中是唯一的，它保存在 <code>WidgetsBinding.instance.buildOwner</code> 中）。</p>
+<p>那么这个 <code>BuildOwner.scheduleBuildFor(..)</code> 是如何触发的呢？答案在 <code>Element.markNeedsBuild(..)</code> 中：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">Element</span> </span>&#123;</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">void</span> markNeedsBuild() &#123;</span><br><span class="line">    <span class="comment">//...</span></span><br><span class="line">    <span class="keyword">if</span> (dirty)</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">    <span class="comment">// 标记脏</span></span><br><span class="line">    _dirty = <span class="keyword">true</span>;</span><br><span class="line">    <span class="comment">// 可以可以看到把 element 自身加入到了 [BuildOwner] 中</span></span><br><span class="line">    owner.scheduleBuildFor(<span class="keyword">this</span>);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">BuildOwner</span> </span>&#123;</span><br><span class="line">  <span class="comment">/// <span class="markdown">Adds an element to the dirty elements list so that it will be rebuilt</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">when [WidgetsBinding.drawFrame] calls [buildScope].</span></span></span><br><span class="line">  <span class="keyword">void</span> scheduleBuildFor(<span class="built_in">Element</span> element) &#123;</span><br><span class="line">    <span class="comment">// ... 略去非核心逻辑</span></span><br><span class="line">    <span class="keyword">if</span> (element._inDirtyList) &#123;</span><br><span class="line">      <span class="comment">// 表明 element 已经在 dirty 列表了</span></span><br><span class="line">      _dirtyElementsNeedsResorting = <span class="keyword">true</span>;</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 加入到 dirty 列表</span></span><br><span class="line">    _dirtyElements.add(element);</span><br><span class="line">    element._inDirtyList = <span class="keyword">true</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">void</span> buildScope(<span class="built_in">Element</span> context, [ VoidCallback callback ]) &#123;</span><br><span class="line">       <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">// 会先排序 _dirtyElements，排序规则是先判断深度</span></span><br><span class="line">    <span class="comment">// 深度浅的在前，深度深的在后。</span></span><br><span class="line">    <span class="comment">// 深度相同的判断是否有脏标记，有脏标记的在前，没有的在后</span></span><br><span class="line">    _dirtyElements.sort(<span class="built_in">Element</span>._sort);</span><br><span class="line">    _dirtyElementsNeedsResorting = <span class="keyword">false</span>;</span><br><span class="line">    <span class="built_in">int</span> dirtyCount = _dirtyElements.length;</span><br><span class="line">    <span class="built_in">int</span> index = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">// 依次遍历 _dirtyElements，调用 rebuild()</span></span><br><span class="line">    <span class="keyword">while</span> (index &lt; dirtyCount) &#123;</span><br><span class="line">      <span class="comment">// 这里调用 rebuild</span></span><br><span class="line">      _dirtyElements[index].rebuild();</span><br><span class="line">      index += <span class="number">1</span>;</span><br><span class="line">      <span class="comment">// ...</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><em>markNeedsBuild(..)</em> 会让 <em>element</em> 自身加入到 <em>BuildOwner</em> 的 <em>_dirtyElements</em> 列表中。</p>
+<p>根据 <em>scheduleBuildFor</em> 的注释，这个 <em>_dirtyElement</em> 是在 <code>WidgetsBinding.drawFrame</code> 触发 <code>BuildOwner.buildScope(..）</code>的时候消费的。</p>
+<p>接下来我们来看下 <code>buildScope(..)</code> 函数，这个函数会先把 <em>_dirtyElements</em> 排下序，排序好之后依次调用 <code>element.rebuild()</code>。</p>
+<blockquote>
+<p>这里为什么要排序？关于这个原因我会在后面分析，这里你只需要知道在 <em>buildScope</em> 内会调用 <em>element</em> 的 <em>rebuild()</em></p>
+</blockquote>
+<p>现在我们已经知道 <em>Element.markNeedsBuild</em> 会让 <em>element</em> 变脏，然后在下一帧 <em>drawFrame</em> 的时候 <em>rebuild</em> 。</p>
+<p> 那么 <em>Element.markNeedsBuild</em> 什么时候会触发呢？它触发的地方比较多，但是最常见的地方就是我们 <em>StatefulWidget</em> 中的 <code>setState(()&#123;&#125;)</code>:</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">State</span>&lt;<span class="title">T</span> <span class="keyword">extends</span> <span class="title">StatefulWidget</span>&gt; </span>&#123;</span><br><span class="line">  <span class="meta">@protected</span></span><br><span class="line">  <span class="keyword">void</span> setState(VoidCallback fn) &#123;</span><br><span class="line">    <span class="comment">//...</span></span><br><span class="line">    <span class="comment">// 这里最后调用了 state 对应的 element，然后 markNeedsBuild</span></span><br><span class="line">    _element.markNeedsBuild();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="build-流程梳理"><a href="#build-流程梳理" class="headerlink" title="build 流程梳理"></a>build 流程梳理</h4><p>到这里为止，你应该对于 flutter 的 build 调用逻辑有了一个大概的流程模型，我们来整理下 <code>setState(()&#123;&#125;)</code> 的流程：</p>
+<p><img src="https://s1.ax1x.com/2020/09/07/wn2gbV.png"></p>
+<ol>
+<li><p>首先我们在业务层调用了 <code>setState(()&#123;&#125;)</code>，根据上面的分析，这里会触发 <code>element.markNeedsBuild()</code></p>
+</li>
+<li><p><em>element</em> 标记了 <em>dirty</em> 之后通过 <code>buildOwner.scheduleBuildFor(element)</code>，将自己插入到 <em>BuildOwner</em> 的 <em>_dirtyElements</em> 中</p>
+</li>
+<li><p><em>BuildOwner</em> 会等待下一次 <em>WidgetsBinding</em> 的 <em>drawFrame()*，在 *drawFrame()</em> 中会调用到 <code>buildOwner.buildScope（..）</code></p>
+</li>
+<li><p><em>buildScope()</em> 中会先排序所有的 <em>_dirtyElements</em>，然后依次执行 *element.rebuild()*，最终会走到 <code>state.build(context)</code></p>
+</li>
+</ol>
+<p>这样梳理下来，相信你对 <code>setState(()&#123;&#125;)</code> 到 <code>state.build(context)</code> 已经有个大概的了解了。</p>
+<p>到这里为止，我再问你一开始的第四个问题：<em>当 widget 的 build 函数执行完成的时候，请问它的子 widget 的 build 函数是否执行了？</em></p>
+<p>可以得到明确的答案就是：<em>不会执行</em>。这个问题其实算个陷阱，很容易让人以为在  <em>parent widget build()</em> 函数里面会执行 <em>child widget build()</em> ，其实 <em>widget</em> 的 <em>build()</em> 是由对应的 <em>element</em> 调用的，和父 <em>widget</em> 的 <em>build()</em> 函数无关。</p>
+<p>现在我们还不知道其它问题的答案，这需要我们来了解另一块知识点：<strong>Flutter 中的复用 / diff 机制</strong>，看累的同学可以中场休息一会儿。</p>
+<hr>
+<h3 id="2-Flutter-中的复用机制"><a href="#2-Flutter-中的复用机制" class="headerlink" title="2. Flutter 中的复用机制"></a>2. Flutter 中的复用机制</h3><p>这里先想个问题，<strong>何为复用</strong>？比如 <em>Android</em> 里面的 <em>RecycleView</em> 中的复用就是 <em>View</em> 的复用，当需要显示一个新的列表元素的时候，会先判断这个列表元素对应的 <em>View</em> 是否有缓存，有缓存的话就直接拿来用，然后绑定新数据（ <em>Android</em> /中创建 <em>View</em> 是很耗费资源的）</p>
+<p>我们知道 Flutter 渲染树中具有持久化的节点是 <em>Element</em>，保存了视图信息的节点是 <em>Widget</em>。也就是复用就是将新的 <em>Widget</em>（信息）绑定到旧的 <em>Element</em> 上。</p>
+<p>根据前面的知识，当我们调用了 <code>setState(()&#123;&#125;)</code>之后，会触发 <code>element.rebuild()</code>，接着触发 <code>element.performRebuild()</code>，之前值分析了 <em>performRebuild()</em> 函数的前半段逻辑，后半段逻辑没分析，我们来看下：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// <span class="markdown">An [Element] that composes other [Element]s.</span></span></span><br><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">ComponentElement</span> <span class="keyword">extends</span> <span class="title">Element</span> </span>&#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  <span class="keyword">void</span> performRebuild() &#123;</span><br><span class="line">    Widget built;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="comment">// 这里调用 build 函数</span></span><br><span class="line">      built = build();</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e, stack) &#123;</span><br><span class="line">      <span class="comment">// ... 这里省略红屏逻辑</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">// -------- 后半段逻辑 -------</span></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      <span class="comment">// 将新的 child widget (built) 更新到 child element (_child) 上</span></span><br><span class="line">      _child = updateChild(_child, built, slot);</span><br><span class="line">      <span class="keyword">assert</span>(_child != <span class="keyword">null</span>);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (e, stack) &#123;</span><br><span class="line">      <span class="comment">// 这里同样有红屏逻辑，也就是除了前面 build 函数异常会触发红屏逻辑，这里也会</span></span><br><span class="line">      built = ErrorWidget.builder(</span><br><span class="line">        _debugReportException(</span><br><span class="line">          ErrorDescription(<span class="string">&#x27;building <span class="subst">$this</span>&#x27;</span>),</span><br><span class="line">          e,</span><br><span class="line">          stack,</span><br><span class="line">          informationCollector: () <span class="keyword">sync</span>* &#123;</span><br><span class="line">            <span class="keyword">yield</span> DiagnosticsDebugCreator(DebugCreator(<span class="keyword">this</span>));</span><br><span class="line">          &#125;,</span><br><span class="line">        ),</span><br><span class="line">      );</span><br><span class="line">      <span class="comment">// 把红屏 widget 当做新的 widget 更新到 child element 上。</span></span><br><span class="line">      _child = updateChild(<span class="keyword">null</span>, built, slot);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="meta">@protected</span></span><br><span class="line">  Widget build();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里可以看到复用的关键点就在 <code>element.updateChild(Element child, Widget newWidget, dynamic newSolt)</code> 函数，我们来看下代码（<strong>这段代码很重要！这段代码很重要！这段代码很重要！</strong>）：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">Element</span> <span class="keyword">extends</span> <span class="title">DiagnosticableTree</span> <span class="keyword">implements</span> <span class="title">BuildContext</span> </span>&#123;</span><br><span class="line">  </span><br><span class="line">  <span class="comment">/// <span class="markdown">这个函数就是复用的逻辑，当 element 的 child widget 更新的时候，是否复用原先旧的 element</span></span></span><br><span class="line">  <span class="comment">///</span></span><br><span class="line">  <span class="comment">/// <span class="markdown">[child] 复用的 element，旧的 child element</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">[newWidget] child element 对应的新的 widget</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">[newSlot] 数据插槽</span></span></span><br><span class="line">  <span class="meta">@protected</span></span><br><span class="line">  <span class="built_in">Element</span> updateChild(<span class="built_in">Element</span> child, Widget newWidget, <span class="built_in">dynamic</span> newSlot) &#123;</span><br><span class="line">    <span class="keyword">if</span> (newWidget == <span class="keyword">null</span>) &#123;</span><br><span class="line">      <span class="keyword">if</span> (child != <span class="keyword">null</span>)</span><br><span class="line">        <span class="comment">// 如果新的 child widget 是 null，前一次的 child widget 不是 null</span></span><br><span class="line">        <span class="comment">// 反激活前一次的 child element，注意这里是反激活，并不会立即销毁</span></span><br><span class="line">        <span class="comment">// 这个函数会把 child element 放到 build owner 的 _inactiveElements 数组中、</span></span><br><span class="line">        <span class="comment">// 等到到了 finalizeTree() 的时候，如果 element 还没有从 _inactiveElements 中移走</span></span><br><span class="line">        <span class="comment">// child element 才会被销毁</span></span><br><span class="line">        deactivateChild(child);</span><br><span class="line">      <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 旧的 child element 不为 null，可能可以复用</span></span><br><span class="line">    <span class="keyword">if</span> (child != <span class="keyword">null</span>) &#123;</span><br><span class="line">      <span class="comment">// 如果旧的 element 的 widget 和新的 chid widget 相等</span></span><br><span class="line">      <span class="comment">// 注意这里是相等判断，一般来说就是两个 widget 是否是同一个引用</span></span><br><span class="line">      <span class="keyword">if</span> (child.widget == newWidget) &#123;</span><br><span class="line">        <span class="comment">// 插槽不一样的时候更新插槽，这个不会触发 child rebuild</span></span><br><span class="line">        <span class="keyword">if</span> (child.slot != newSlot)</span><br><span class="line">          updateSlotForChild(child, newSlot);</span><br><span class="line">        <span class="comment">// 这里函数就结束了，说明这种情况下不会触发 child 的 build</span></span><br><span class="line">        <span class="keyword">return</span> child;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">// 判断当前 child element 是否可以复用在 new child widget 上</span></span><br><span class="line">      <span class="keyword">if</span> (Widget.canUpdate(child.widget, newWidget)) &#123;</span><br><span class="line">        <span class="comment">// 更新插槽，没啥特别的逻辑</span></span><br><span class="line">        <span class="keyword">if</span> (child.slot != newSlot)</span><br><span class="line">          updateSlotForChild(child, newSlot);</span><br><span class="line">        <span class="comment">// 调用 child element 的 update，如果这里的 child 是 ComponentElement</span></span><br><span class="line">        <span class="comment">// 则会触发 child element 的 rebuild</span></span><br><span class="line">        child.update(newWidget);</span><br><span class="line">        <span class="comment">// .. 省略断言，结束函数</span></span><br><span class="line">        <span class="keyword">return</span> child;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">// 说明不可以复用原先旧的 element，反激活 child element，注意这里是反激活</span></span><br><span class="line">      deactivateChild(child);</span><br><span class="line">      <span class="keyword">assert</span>(child._parent == <span class="keyword">null</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 根据 new widget 重新生成一个新的 child element</span></span><br><span class="line">    <span class="comment">// 这里不一定是使用新的 child element，如果 newWidget 的 key 是个 GlobalKey，而且 key 里面保存着有</span></span><br><span class="line">    <span class="comment">// 有效的 child element，那么就会复用 key 中的 child element</span></span><br><span class="line">    <span class="keyword">return</span> inflateWidget(newWidget, newSlot);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>上面的方法解析我给每一行都加上了解释 (<strong>请仔细阅读</strong>)。读完了之后应该就可以知道第一个问题和第三个问题的答案了：</p>
+<h4 id="1-当父-widget-rebuild-的时候，子-widget-是否会-rebuild？"><a href="#1-当父-widget-rebuild-的时候，子-widget-是否会-rebuild？" class="headerlink" title="1. 当父 widget rebuild 的时候，子 widget 是否会 rebuild？"></a>1. 当父 widget rebuild 的时候，子 widget 是否会 rebuild？</h4><p>假定父 <em>widget</em> 是 <em>ParentWidget</em>，子 <em>widget</em> 是 <em>ChildWidget</em>。当父 <em>widget</em> 重建后，会调用到<code>parentElement.updateChild(oldChildElement, newChildWidget, newSlot)</code>。此时按照上述代码可以分为三种情况：</p>
+<ul>
+<li><em>oldChildWidget</em> 和 <em>newChildWidget</em> 相等，这里基本上就是两者是同一个对象实例，<strong>此时不会触发 <em>child</em> 的 update，也不会触发 <em>newChildWidget</em> 的 build</strong></li>
+<li><em>newChildWidget</em> 可以更新到 <em>oldChildWidget</em> 上（<code>Widget.canUpdate(child.widget, newWidget)</code> 返回 true），此复用原先的 child <em>element</em>，还会调用 newChildWidget 的 build</li>
+<li><em>newChildWidget</em> 不可以更新到 <em>oldChildWidget</em> 上，反激活原先的 <em>child element</em>，重新获取一个 child element</li>
+</ul>
+<blockquote>
+<p><code>Widget.canUpdate(..)</code> 可以更新的条件就是 widget 的 type 和 key 是否相等，这个比较简单，就不把源码列出来了</p>
+</blockquote>
+<p>所以这里得出答案是，子 widget 不一定会 rebuild，比如这个就不会触发子 widget 的 build：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ParentWidget</span> <span class="keyword">extends</span> <span class="title">StatefulWidget</span> </span>&#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  _ParentWidgetState createState() =&gt; _ParentWidgetState();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">_ParentWidgetState</span> <span class="keyword">extends</span> <span class="title">State</span>&lt;<span class="title">ParentWidget</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">  ChildWidget childWidget;</span><br><span class="line"></span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  Widget build(BuildContext context) &#123;</span><br><span class="line">    <span class="keyword">return</span> RaisedButton(</span><br><span class="line">      <span class="comment">// 关键代码</span></span><br><span class="line">      child: childWidget ??= ChildWidget(),</span><br><span class="line">      onPressed: () &#123;</span><br><span class="line">        <span class="comment">// 这里触发 ParentWidget 的 rebuild</span></span><br><span class="line">        <span class="comment">// 但是并不会触发 child 的 build</span></span><br><span class="line">        setState(() &#123;&#125;);</span><br><span class="line">      &#125;,</span><br><span class="line">    );</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ChildWidget</span> <span class="keyword">extends</span> <span class="title">StatelessWidget</span> </span>&#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  Widget build(BuildContext context) &#123;</span><br><span class="line">    <span class="keyword">return</span> Container(</span><br><span class="line">        width: <span class="number">100</span>,</span><br><span class="line">      height: <span class="number">100</span>,</span><br><span class="line">      color: Colors.red,</span><br><span class="line">    );</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><code>Navigator</code> 中有两处使用了上述方法来减少 page 的 build。</p>
+</blockquote>
+<h4 id="2-用了-StatefulWidget-就一定可以保存状态吗？如果不是，什么情况下会丢失状态？"><a href="#2-用了-StatefulWidget-就一定可以保存状态吗？如果不是，什么情况下会丢失状态？" class="headerlink" title="2. 用了 StatefulWidget 就一定可以保存状态吗？如果不是，什么情况下会丢失状态？"></a>2. 用了 <code>StatefulWidget</code> 就一定可以保存状态吗？如果不是，什么情况下会丢失状态？</h4><p><em>StatefulWidget</em> 中的 <em>State</em> 之所以可以持久化，是因为它被 <em>StatefulElement</em> 持有了，只要 <em>StatefulElement</em> 没有被重新创建，那么这个 <em>State</em> 就可以持久化：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">StatefulElement</span> <span class="keyword">extends</span> <span class="title">ComponentElement</span> </span>&#123;</span><br><span class="line">  <span class="comment">/// <span class="markdown">The [State] instance associated with this location in the tree.</span></span></span><br><span class="line">  <span class="comment">///</span></span><br><span class="line">  <span class="comment">/// <span class="markdown">There is a one-to-one relationship between [State] objects and the</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">[StatefulElement] objects that hold them. The [State] objects are created</span></span></span><br><span class="line">  <span class="comment">/// <span class="markdown">by [StatefulElement] in [mount].</span></span></span><br><span class="line">  State&lt;StatefulWidget&gt; <span class="keyword">get</span> state =&gt; _state;</span><br><span class="line">  <span class="comment">/// <span class="markdown">这里保存了 <span class="emphasis">_state</span></span></span></span><br><span class="line">  State&lt;StatefulWidget&gt; _state;</span><br><span class="line">  </span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  <span class="keyword">void</span> unmount() &#123;</span><br><span class="line">    <span class="keyword">super</span>.unmount();</span><br><span class="line">    _state.dispose();</span><br><span class="line">    <span class="comment">//... 省略断言</span></span><br><span class="line">    _state._element = <span class="keyword">null</span>;</span><br><span class="line">    <span class="comment">// 只有 element 被销毁了，_state 才会被销毁</span></span><br><span class="line">    _state = <span class="keyword">null</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>根据 <code>element.updateChild(..)</code> 函数中的逻辑，child element 是不一定可以复用的，比如这个 <a target="_blank" rel="noopener" href="https://codepen.io/voiddog/pen/MWyrGOJ?__cf_chl_jschl_tk__=56682b4f852e598e853f1b85ff726b04b886d591-1599444351-0-AfRgx-yrq04Gjzb6SXTAIHUlF5NQb99SzGrnenQzv8emGe0XyjBV1f147pPtober6IAvnYwriPK7D2sSM95zzKZomuyX6WgI_z-lXcvsXH295-I_HIPphuAMqvnBfthxDu8sRSPXIhZi6szLcVbxEBrwGbcjot2EqQevWUyM7adrOvH33YamtTp2LEZK_UrQZ5O0VXc_QHE2eSn7vK694fHq9j5BEOUKUtY7SJcb3oCxn9XbS-E83PdM-QdKGmF1dGIJtXetmeK27Jg0rB0V3ZF29M9LRZfuxP29jRpdttFWCKVV-ynEAyN2kuygd4BLZQk8TjKIu53yVPm6DCYv_RPcY8wagWJBBrz5rKtGLZCo">demo</a> 中的 <em>_ChildWidgetState</em> 就会被销毁重建。</p>
+<blockquote>
+<p>如果你要改变某个 widget 在树种的层级位置，还想保留原先的 element，那么可以使用 GlobalKey，具体逻辑参阅 <code>inflateWidget(newWidget, newSlot)</code></p>
+</blockquote>
+<h3 id="3-Flutter-中的-diff-机制-RenderObjectElement"><a href="#3-Flutter-中的-diff-机制-RenderObjectElement" class="headerlink" title="3. Flutter 中的 diff 机制 RenderObjectElement"></a>3. Flutter 中的 diff 机制 <em>RenderObjectElement</em></h3><p>其实上面的复用机制也可以叫做 diff 机制，只不过我这里 diff 特指一个 <em>element</em> 有多个 <em>child element</em> 的情况。<em>Flutter framework</em> 目前对这种情况作了一个 diff 算法，该算法在 <code>RenderObjectElement.updateChildren(..)</code> 里面。</p>
+<p>这里先提下这个 <code>RenderObjectElement</code>，它和我们前面的 <code>ComponentElement</code> 有啥区别？</p>
+<p>我们知道最后交给 engine 渲染的时候用到的并不是 <em>element tree</em>，而是需要 <em>render tree</em>，通过 <em>render tree</em> 计算出 <em>layer tree</em> 然后交给 engine。</p>
+<p>但是 <em>ComponentElement</em> 其实并没有 <em>RenderObject</em>，它没有复写 <em>Element</em> 中 <code>get renderObject</code> 这方法，只有 <em>RenderObjectElement</em> 才有自己的 <em>RenderObject</em>，这个就是区别！</p>
+<blockquote>
+<p>这里可以知道第五个问题的答案，widget 和 element 是一一对应的，但是 element 和 renderObject 不是</p>
+</blockquote>
+<p>好了，扯远了，我们回到 <code>RenderObjectElement.updateChildren(..)</code> 这个函数，这个函数的输入是：</p>
+<ul>
+<li>List<Element> oldChildren：旧的 <em>child element list</em></li>
+<li>List<Widget> newWidgets：新的 child widget list</li>
+<li>Set<Element> forgottenChildren（可选）：如果 child 在这个里面，就忽略复用</li>
+</ul>
+<p>函数会根据输入的 <em>newWidgets</em> 来更新 <em>oldChildren</em>，最后返回一个新的 <em>child element list</em>。这里在更新的时候就会有一个 diff 算法，这个算法逻辑有点复杂，我直接说结论，有兴趣的同学可以看下<a target="_blank" rel="noopener" href="https://github.com/flutter/flutter/blob/v1.12.13-hotfixes/packages/flutter/lib/src/widgets/framework.dart#L5105">源码</a>：</p>
+<ul>
+<li>先从上往下依次匹配 <em>oldChildElement</em> 和 <em>newChildWidget</em>，如果可以更新（<code>Widget.canUpdate(,)</code>返回 <em>true</em>），则直接更新 <code>updateChild(oldChildElement, newChildWidget)</code>，一直到匹配失败</li>
+<li>再从下往上依次匹配 <em>oldChildElement</em> 和 <em>newChildWidget</em>，直到不可以更新，保存遍历的 index（注意，这里没有 <em>updateChild</em> 为的是保证 <em>updateChild</em> 是从小到大的，所以只保存 index，最后更新）</li>
+<li>中间的根据 <em>newChildWidget</em> 的 <em>key</em> 从剩余的 <em>oldChildElement</em> 中查找，找到就尝试匹配，找不到或者匹配失败就不走复用</li>
+<li>最后开始更新之前第二步 pending 的 children 们</li>
+</ul>
+<h2 id="四、总结"><a href="#四、总结" class="headerlink" title="四、总结"></a>四、总结</h2><p>内容有点多，我们来归纳下得到的一些结论：</p>
+<ul>
+<li><em>StalessWidget</em> 和 <em>StatefulWidget</em> 的 <strong>build 函数基本随时都可能被触发</strong></li>
+<li>当一个 <em>widget</em> 触发 <em>rebuild</em> 的时候，它的 <em>child</em> 可能触发 <em>rebuild</em> 也可能不触发</li>
+<li><em>StatefulWidget</em> 不一定能一直保存状态，这个取决于复用逻辑：newWidget 是否可以更新到 oldElement 上</li>
+<li>多 child 的 element 中，key 在复用方面有着很大的作用：diff 算法中，中间一段会根据 key 来匹配复用</li>
+</ul>
+<p>基于上述几点结论，我这里再给出几个比较有意义的建议：</p>
+<h3 id="1-随时考虑-build-函数会被调用"><a href="#1-随时考虑-build-函数会被调用" class="headerlink" title="1. 随时考虑 build 函数会被调用"></a>1. 随时考虑 build 函数会被调用</h3><p>你在业务开发的时候，是保证不了整体的 <em>build()</em> 函数控制的，这样不符合 flutter 的设计。你要随时考虑 <code>build(context)</code> 函数会被调用，然后在这个基础上去优化</p>
+<p>比如我在很多地方看到这样的代码：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Page</span> <span class="keyword">extends</span> <span class="title">StatelessWidget</span> </span>&#123;</span><br><span class="line">  </span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  Widget build(BuildContext context) &#123;</span><br><span class="line">    <span class="comment">// 页面 show 事件，不应该被放到 build 中，一旦 Page rebuild 了，就会多次 show</span></span><br><span class="line">    Logger.instance.onPageShow();</span><br><span class="line">    <span class="keyword">return</span> PhotoList(</span><br><span class="line">      <span class="comment">// 一旦 _Page rebuild 了，这里的 bloc 就会重建，导致之前的数据全部丢失</span></span><br><span class="line">        bloc: PhotoBloc(),</span><br><span class="line">    );</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>小提示：你可知道只要 <code>Navigator.push(..)</code> 时候，<em>push</em> 的页面是 <em>StatefulWidget</em>，那么每次 <em>push</em> 新页面的时候，之前旧的页面都会被 <em>rebuild</em> 一次！</p>
+</blockquote>
+<h3 id="2-千万不要在-widget-中保存数据"><a href="#2-千万不要在-widget-中保存数据" class="headerlink" title="2. 千万不要在 widget 中保存数据"></a>2. 千万不要在 widget 中保存数据</h3><p><em>widget</em> 只是一个 UI 配置，它在设计上内部的属性都应该是 final 的，所以千万别犯这种不符合 flutter 设计规范的错误，比如：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">WidgetA</span> <span class="keyword">extends</span> <span class="title">StatelessWidget</span> </span>&#123;</span><br><span class="line">  </span><br><span class="line">  <span class="built_in">Map</span>&lt;<span class="built_in">String</span>, <span class="built_in">dynamic</span>&gt; _extra = &#123;&#125;;</span><br><span class="line">  </span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  Widget build(BuildContext context) &#123;</span><br><span class="line">    <span class="keyword">return</span> GestureDetector(</span><br><span class="line">        onTap: () &#123;</span><br><span class="line">        _extra[<span class="string">&quot;onTap&quot;</span>] = <span class="keyword">true</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    );</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>如果你这样写了，那么恭喜，你会疑惑为啥我的 <em>_extra</em> 经常会被清空。</p>
+<h3 id="3-局部刷新的技巧-setState-下沉"><a href="#3-局部刷新的技巧-setState-下沉" class="headerlink" title="3. 局部刷新的技巧 setState((){}) 下沉"></a>3. 局部刷新的技巧 <code>setState(()&#123;&#125;)</code> 下沉</h3><p>根据前面的只是，我们已经知道了 <code>setState(()&#123;&#125;)</code> 就是个局部刷新。它就是把当前的 <em>element</em> 标记成脏，然后加入到 <em>buildOwner</em> 中的 <em>_dirtyElements</em> 列表中，等待下一帧的时候 <em>rebuild</em>。</p>
+<p>这里可以延伸出一种优化，<strong>setState 下沉</strong>，一般情况下我们是不会保存 widget 对象的，也就 <em>setState</em>触发后，child widget 基本都会 rebuild。如果我们只需要更新子 widget 中的信息，就不要尽量不要去调用父 widget 中的 setState，这一点在写动画的时候效果特别明显: <a target="_blank" rel="noopener" href="https://codepen.io/voiddog/pen/bGpaMKV">sample demo</a></p>
+<h3 id="4-使用-key-来保持复用"><a href="#4-使用-key-来保持复用" class="headerlink" title="4. 使用 key 来保持复用"></a>4. 使用 key 来保持复用</h3><p>如果你想要在移动 <em>StatefulWidget</em> 层级的时候保存它的状态，根据之前的分析可以使用 <code>GlobalKey</code>。</p>
+<p>如果你想要重排序某个 <code>MultiRenderObjectElement</code> 下面的 <em>children</em>(例如在 Stack 里面重新排序 children 的上下顺序)，那么给每个 <em>child widget</em> 加上一个唯一标志的 key（比如 <code>ValueKey(id)</code>），只要重排序后，<em>widget.key</em> 没有变化，那么根据之前分析的 <em>diff</em> 机制，它会复用之前的 element。</p>
+<hr>
+<p>到这里位置关于 flutter build 的一些基础内容就讲完了，相信你读完本文后不会再写出一些违背 flutter 原则的代码了。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Flutter/" rel="tag"># Flutter</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/1597571470112/" rel="prev" title="Flutter 手势事件解析（二）">
+                  <i class="fa fa-chevron-left"></i> Flutter 手势事件解析（二）
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/1600660316174/" rel="next" title="谈谈 Flutter 的页面">
+                  谈谈 Flutter 的页面 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">VoidDog</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

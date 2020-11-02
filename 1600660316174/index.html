@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"blog.voiddog.org","root":"/","scheme":"Pisces","version":"8.0.0-rc.5","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false};
+  </script>
+
+  <meta name="description" content="本文不讨论混合栈，只讨论纯 flutter 栈，代码基于 1.12.13，1.17 上 navigator 有做大量改动，不适用于在文章里面分析（源码量大），原理上相同。阅读本文前请先阅读 谈谈 flutter 的 build  一般来说，flutter 的页面都是由 Navigator 这个组件来组织的，一个页面对应一个 Route&lt;T&gt;。不过我看到许多业务方同学对于这个页面的理">
+<meta property="og:type" content="article">
+<meta property="og:title" content="谈谈 Flutter 的页面">
+<meta property="og:url" content="http://blog.voiddog.org/1600660316174/index.html">
+<meta property="og:site_name" content="爆裂吧现实">
+<meta property="og:description" content="本文不讨论混合栈，只讨论纯 flutter 栈，代码基于 1.12.13，1.17 上 navigator 有做大量改动，不适用于在文章里面分析（源码量大），原理上相同。阅读本文前请先阅读 谈谈 flutter 的 build  一般来说，flutter 的页面都是由 Navigator 这个组件来组织的，一个页面对应一个 Route&lt;T&gt;。不过我看到许多业务方同学对于这个页面的理">
+<meta property="og:locale">
+<meta property="article:published_time" content="2020-09-21T11:51:03.000Z">
+<meta property="article:modified_time" content="2020-11-02T10:15:43.961Z">
+<meta property="article:author" content="VoidDog">
+<meta property="article:tag" content="Flutter">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="http://blog.voiddog.org/1600660316174/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>谈谈 Flutter 的页面 | 爆裂吧现实</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175543622-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-175543622-1');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">爆裂吧现实</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">不想死就早点睡</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Navigator-push-%E5%88%B0%E5%BA%95%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-number">1.</span> <span class="nav-text">Navigator push 到底发生了什么？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Overlay-%E8%A7%A3%E6%9E%90"><span class="nav-number">2.</span> <span class="nav-text">Overlay 解析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-OverlayEntry-%E4%BB%8B%E7%BB%8D"><span class="nav-number">2.1.</span> <span class="nav-text">1. OverlayEntry 介绍</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-Overlay-%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%84%E6%88%90"><span class="nav-number">2.2.</span> <span class="nav-text">2. Overlay 的内部组成</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E5%9C%A8-Overlay-%E4%B8%AD%E6%8F%92%E5%85%A5%E6%B5%AE%E5%B1%82"><span class="nav-number">2.3.</span> <span class="nav-text">3. 在 Overlay 中插入浮层</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-%E8%A7%A3%E6%9E%90%E9%A1%B5%E9%9D%A2%E7%9A%84-build-%E6%97%B6%E6%9C%BA"><span class="nav-number">2.4.</span> <span class="nav-text">4. 解析页面的 build 时机</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%93%E6%9D%9F%E8%AF%AD%EF%BC%9A"><span class="nav-number">3.</span> <span class="nav-text">结束语：</span></a></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="VoidDog"
+      src="https://i.imgur.com/rO7BKq2.png">
+  <p class="site-author-name" itemprop="name">VoidDog</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/voiddog" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/qgx446738721" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;qgx446738721" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.facebook.com/voiddog" title="Facebook → https:&#x2F;&#x2F;www.facebook.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-facebook fa-fw"></i>Facebook</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/voiddog" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-instagram fa-fw"></i>Instagram</a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://blog.voiddog.org/1600660316174/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://i.imgur.com/rO7BKq2.png">
+      <meta itemprop="name" content="VoidDog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爆裂吧现实">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          谈谈 Flutter 的页面
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-09-21 11:51:03" itemprop="dateCreated datePublished" datetime="2020-09-21T11:51:03+00:00">2020-09-21</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-11-02 10:15:43" itemprop="dateModified" datetime="2020-11-02T10:15:43+00:00">2020-11-02</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Flutte/" itemprop="url" rel="index"><span itemprop="name">Flutte</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <blockquote>
+<p> 本文不讨论混合栈，只讨论纯 flutter 栈，代码基于 1.12.13，1.17 上 navigator 有做大量改动，不适用于在文章里面分析（源码量大），原理上相同。阅读本文前请先阅读 <a href="/1599449233776/" title="谈谈 flutter 的 build">谈谈 flutter 的 build</a></p>
+</blockquote>
+<p>一般来说，flutter 的页面都是由 <code>Navigator</code> 这个组件来组织的，一个页面对应一个 <code>Route&lt;T&gt;</code>。不过我看到许多业务方同学对于这个页面的理解有些偏差，比如以下几个问题：</p>
+<ol>
+<li><code>PageRoute&lt;T&gt;</code> 的 build 函数是否会多次执行？（比如常用的 <code>MaterialPageRoute&lt;T&gt;</code> 里面的 build 函数）</li>
+<li>当 push 了一个新的页面的时候，不在栈顶的页面根 widget 是否会重新执行 build 函数？</li>
+<li>非栈顶页面是否会渲染？</li>
+<li>非栈顶页面的 state 是否会保存？</li>
+</ol>
+<a id="more"></a>
+
+<p>对于第一个问题和第二个问题，业务方犯的错比较多，都认为不会被再次调用到，但是其实都是 <strong>可能</strong> 会被调用到的（注意这里是可能）。所以一开始入门 flutter 的时候很容易写出以下错误代码：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> _jumpToNextPage() &#123;</span><br><span class="line">  Navigator.push(</span><br><span class="line">    context,</span><br><span class="line">    MaterialPageRoute(builder: (context) &#123;</span><br><span class="line">      <span class="keyword">return</span> NewPage(</span><br><span class="line">        <span class="comment">// 如果这里 route 的 build 函数重建了，那么 model 就会重建</span></span><br><span class="line">        <span class="comment">// 之前的数据都会消失</span></span><br><span class="line">        model: ViewModel(),</span><br><span class="line">      );</span><br><span class="line">    &#125;),</span><br><span class="line">  );</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">NewPage</span> <span class="keyword">extends</span> <span class="title">StatefulWidget</span> </span>&#123;</span><br><span class="line">  _NewPageState createState() =&gt; _NewPageState();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">_NewPageState</span> <span class="keyword">extends</span> <span class="title">State</span>&lt;<span class="title">NewPage</span>&gt; </span>&#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  Widget build(BuildContext context) &#123;</span><br><span class="line">    <span class="comment">// 业务方在这里加了一个添加监听的方法，但是只要 build 函数被重建，这个监听就会重新添加。</span></span><br><span class="line">    <span class="comment">// 当时是因为只有一个页面，所以一直没发现问题</span></span><br><span class="line">    addListener(..);</span><br><span class="line">    <span class="keyword">return</span> Scaffold(</span><br><span class="line">        body: NewPageList(</span><br><span class="line">        <span class="comment">// bloc 是数据模块，生命周期是应该跟随页面的，这里这样写会在 build 触发的时候变成一个新的 bloc</span></span><br><span class="line">        <span class="comment">// 导致之前的数据都消失了</span></span><br><span class="line">          bloc: NewPageBloc(),</span><br><span class="line">      ),</span><br><span class="line">    );</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里不得不提下 flutter 开发的一个理念：<strong>build 函数会在任何时候被调用到</strong>，基于这个原则开发代码，才不会出现很多莫名其妙的 bug。</p>
+<p>对于3、4 两个问题，我这里先说下答案：非栈顶页面不会被渲染出来，但是 state 会保留。</p>
+<p>如果你对于上述问题不了解，或者只知道结论，那么就说明你对 flutter 里面的 build 机制不熟悉，不熟悉 <code>Navigator</code> 的内部结构。</p>
+<p>别担心，接下来我就带大家来了解下 Navigator 这个组件。</p>
+<h2 id="Navigator-push-到底发生了什么？"><a href="#Navigator-push-到底发生了什么？" class="headerlink" title="Navigator push 到底发生了什么？"></a>Navigator push 到底发生了什么？</h2><p>先来看下我们 push 页面的代码：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Navigator.push(</span><br><span class="line">  context,</span><br><span class="line">  MaterialPageRoute(builder: (context) &#123;</span><br><span class="line">    <span class="keyword">return</span> NewPage();</span><br><span class="line">  &#125;),</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<p>这里的 context 是 <code>BuildContext</code>，一般来说他就是当前组件对应的 <code>Element</code>，比如之前 <code>_NewPageState.build(context)</code> 中的 context 就是 <code>NewPage</code> widget 对应的 element。</p>
+<p><code>Navigator</code> 在 push 的时候需要 context 是因为它需要根据 context 来获取到 <code>NavigatorState</code>，所以上述代码也可以写成 <code>Navigator.of(context).push(..)</code> 的形式。</p>
+<p>继续来看下 push 函数中做了啥：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">Future&lt;T&gt; push&lt;T <span class="keyword">extends</span> <span class="built_in">Object</span>&gt;(Route&lt;T&gt; route) &#123;</span><br><span class="line">  <span class="keyword">final</span> Route&lt;<span class="built_in">dynamic</span>&gt; oldRoute = _history.isNotEmpty ? _history.last : <span class="keyword">null</span>;</span><br><span class="line">  route._navigator = <span class="keyword">this</span>;</span><br><span class="line">  <span class="comment">// 关键：执行了 route 的 install，暂时忽略 _currentOverlayEntry</span></span><br><span class="line">  route.install(_currentOverlayEntry);</span><br><span class="line">  <span class="comment">// 将 route 添加到 _histrory 栈中</span></span><br><span class="line">  _history.add(route);</span><br><span class="line">  <span class="comment">// 通知 route 对应的 action</span></span><br><span class="line">  route.didPush();</span><br><span class="line">  route.didChangeNext(<span class="keyword">null</span>);</span><br><span class="line">  <span class="keyword">if</span> (oldRoute != <span class="keyword">null</span>) &#123;</span><br><span class="line">    oldRoute.didChangeNext(route);</span><br><span class="line">    route.didChangePrevious(oldRoute);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// 生命周期通知</span></span><br><span class="line">  <span class="keyword">for</span> (NavigatorObserver observer <span class="keyword">in</span> widget.observers)</span><br><span class="line">    observer.didPush(route, oldRoute);</span><br><span class="line">  RouteNotificationMessages.maybeNotifyRouteChange(_routePushedMethod, route, oldRoute);</span><br><span class="line">  _afterNavigation(route);</span><br><span class="line">  <span class="keyword">return</span> route.popped;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>从 <em>push</em> 函数中并没有添加页面 widget 相关的内容，navigator 把这部分逻辑收敛到了 <code>route.install(_currentOverlayEntry)</code> 里面</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">Route</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line">  <span class="meta">@protected</span></span><br><span class="line">  <span class="meta">@mustCallSuper</span></span><br><span class="line">  <span class="keyword">void</span> install(OverlayEntry insertionPoint) &#123; &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">OverlayRoute</span>&lt;<span class="title">T</span>&gt; <span class="keyword">extends</span> <span class="title">Route</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  <span class="keyword">void</span> install(OverlayEntry insertionPoint) &#123;</span><br><span class="line">    <span class="comment">// 将当前 创建的 overlay entry 加入到 _overlayEntries 中</span></span><br><span class="line">    _overlayEntries.addAll(createOverlayEntries());</span><br><span class="line">    <span class="comment">// 将 _overlayEntries 插入到 navigator 的 overlay 中</span></span><br><span class="line">    navigator.overlay?.insertAll(_overlayEntries, above: insertionPoint);</span><br><span class="line">    <span class="keyword">super</span>.install(insertionPoint);</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="built_in">Iterable</span>&lt;OverlayEntry&gt; createOverlayEntries();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>Route&lt;T&gt;</code> 的 install 就是个空实现，但是它的子类 <code>OverlayRoute&lt;T&gt;</code> 就有添加组件相关的操作了: <code>navigator.overlay?.insertAll(_overlayEntries, above: insertionPoint);</code> ，将当前 <code>OverlayRoute</code> 创建的 <code>_overlayEntries</code> <strong>插入到   navigator 的 overlay 中</strong>。</p>
+<p><code>OverlayEntry</code>是浮层实例，它是用在 <code>Overlay</code> 组件中的，阅读过 <code>Navigator</code> 的同学应该知道，<code>Navigator</code> 组件其实是个 <code>StatefulWidget</code>，它在 build 函数中构造了 <code>Overlay</code> 来作为页面的载体，也就是我们的一个页面就是一个 <code>Overlay</code> 中的浮层实例。</p>
+<p>继续来看 <code>createOverlayEntries()</code> 的实现：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// <span class="markdown">TransitionRoute 继承自 OverlayRoute，主要来做页面切换动画用</span></span></span><br><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">ModalRoute</span>&lt;<span class="title">T</span>&gt; <span class="keyword">extends</span> <span class="title">TransitionRoute</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  <span class="built_in">Iterable</span>&lt;OverlayEntry&gt; createOverlayEntries() <span class="keyword">sync</span>* &#123;</span><br><span class="line">    <span class="comment">// 屏障，一般是触摸事件拦截，防止触摸事件传递到非栈顶页面，这里不做解析</span></span><br><span class="line">    <span class="keyword">yield</span> _modalBarrier = OverlayEntry(builder: _buildModalBarrier);</span><br><span class="line">    <span class="comment">// 这里才是构建页面的地方</span></span><br><span class="line">    <span class="keyword">yield</span> OverlayEntry(builder: _buildModalScope, maintainState: maintainState);</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="comment">/// <span class="markdown">构建页面的方法</span></span></span><br><span class="line">  Widget buildPage(BuildContext context, Animation&lt;<span class="built_in">double</span>&gt; animation, Animation&lt;<span class="built_in">double</span>&gt; secondaryAnimation);</span><br><span class="line">  </span><br><span class="line">  Widget _buildModalScope(BuildContext context) &#123;</span><br><span class="line">    <span class="comment">// 可以看到这里返回了一个 _ModalScope 组件</span></span><br><span class="line">    <span class="comment">// 这个 _ModalScope 组件在 build 的时候会调用到 buildPage 方法</span></span><br><span class="line">    <span class="keyword">return</span> _modalScopeCache ??= _ModalScope&lt;T&gt;(</span><br><span class="line">      key: _scopeKey,</span><br><span class="line">      route: <span class="keyword">this</span>,</span><br><span class="line">    );</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">PageRoute</span>&lt;<span class="title">T</span>&gt; <span class="keyword">extends</span> <span class="title">ModalRoute</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MaterialPageRoute</span>&lt;<span class="title">T</span>&gt; <span class="keyword">extends</span> <span class="title">PageRoute</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line">  </span><br><span class="line">  <span class="comment">/// <span class="markdown">实现了 ModalRoute 中构建页面的方法</span></span></span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  Widget buildPage(</span><br><span class="line">    BuildContext context,</span><br><span class="line">    Animation&lt;<span class="built_in">double</span>&gt; animation,</span><br><span class="line">    Animation&lt;<span class="built_in">double</span>&gt; secondaryAnimation,</span><br><span class="line">  ) &#123;</span><br><span class="line">    <span class="comment">// 这里就是我们传入的 build 函数</span></span><br><span class="line">    <span class="keyword">final</span> Widget result = builder(context);</span><br><span class="line">    <span class="keyword">return</span> Semantics(</span><br><span class="line">      scopesRoute: <span class="keyword">true</span>,</span><br><span class="line">      explicitChildNodes: <span class="keyword">true</span>,</span><br><span class="line">      child: result,</span><br><span class="line">    );</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>createOverlayEntries()</code> 的实现是在 <code>ModalRoute</code> 中，它会在 <code>Overlay</code> 组件中添加两个浮层，底部的浮层是一个屏障浮层，用来指针事件（Pointer Event），防止指针事件传递到非栈顶页面，顶部浮层就是我们的业务页面，业务页面的构建是方法：<code>buildPage(..)</code>。</p>
+<blockquote>
+<p>指针事件的传递拦截原理如果不了解，可以阅读 [flutter 手势处理了解下（一）](flutter 手势处理了解下（一）.md)</p>
+</blockquote>
+<p>最后由我们常用的 <code>MaterialPageRoute&lt;T&gt;</code> 来实现  <code>buildPage(..)</code>。</p>
+<p>现在我们已经知道页面是加到 <code>Overlay</code> 中的，接下来继续参透下 <code>Overlay</code> 这个 widget。</p>
+<h2 id="Overlay-解析"><a href="#Overlay-解析" class="headerlink" title="Overlay 解析"></a>Overlay 解析</h2><h3 id="1-OverlayEntry-介绍"><a href="#1-OverlayEntry-介绍" class="headerlink" title="1. OverlayEntry 介绍"></a>1. OverlayEntry 介绍</h3><p>官方对于 <code>OverlayEntry</code> 的解释是：<em>A place in an [Overlay] that can contain a widget.</em> 它里面有三个比较重要的属性：</p>
+<ul>
+<li>opaque：表示当前 entry 是否是一个不透明的 entry（这里的不透明是指会盖住整个 Overlay）</li>
+<li>maintainState：是否保存 entry 中 widget 的状态，后面会解释</li>
+<li>_key：一个私有属性，对于理解 overlay 工作机制有很大的作用</li>
+</ul>
+<h3 id="2-Overlay-的内部组成"><a href="#2-Overlay-的内部组成" class="headerlink" title="2. Overlay 的内部组成"></a>2. Overlay 的内部组成</h3><p><code>Overlay</code> 是一个 <em>StatefulWidget</em>，我们来看下它的一个大致结构：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Overlay</span> <span class="keyword">extends</span> <span class="title">StatefulWidget</span> </span>&#123;</span><br><span class="line">  <span class="keyword">final</span> <span class="built_in">List</span>&lt;OverlayEntry&gt; initialEntries;</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">const</span> Overlay(&#123;</span><br><span class="line">    Key key,</span><br><span class="line">    <span class="keyword">this</span>.initialEntries = <span class="keyword">const</span> &lt;OverlayEntry&gt;[],</span><br><span class="line">  &#125;) : <span class="keyword">assert</span>(initialEntries != <span class="keyword">null</span>),</span><br><span class="line">       <span class="keyword">super</span>(key: key);</span><br><span class="line">  </span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  OverlayState createState() =&gt; OverlayState();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">OverlayState</span> <span class="keyword">extends</span> <span class="title">State</span>&lt;<span class="title">Overlay</span>&gt; <span class="title">with</span> <span class="title">TickerProviderStateMixin</span> </span>&#123;</span><br><span class="line">     </span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  Widget build(BuildContext context) &#123;</span><br><span class="line">    <span class="keyword">final</span> <span class="built_in">List</span>&lt;Widget&gt; onstageChildren = &lt;Widget&gt;[];</span><br><span class="line">    <span class="keyword">final</span> <span class="built_in">List</span>&lt;Widget&gt; offstageChildren = &lt;Widget&gt;[];</span><br><span class="line">    <span class="built_in">bool</span> onstage = <span class="keyword">true</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="built_in">int</span> i = _entries.length - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i -= <span class="number">1</span>) &#123;</span><br><span class="line">      <span class="comment">// 从尾部开始遍历</span></span><br><span class="line">      <span class="keyword">final</span> OverlayEntry entry = _entries[i];</span><br><span class="line">      <span class="comment">// 一开始都是 on stage 的</span></span><br><span class="line">      <span class="keyword">if</span> (onstage) &#123;</span><br><span class="line">        onstageChildren.add(_OverlayEntry(entry)); <span class="comment">// 注意这里的 _OverlayEntry 是个 widget</span></span><br><span class="line">        <span class="comment">// 只要出现了一个不透明的，下面的浮层都属于 off stage</span></span><br><span class="line">        <span class="keyword">if</span> (entry.opaque)</span><br><span class="line">          onstage = <span class="keyword">false</span>;</span><br><span class="line">      &#125; <span class="keyword">else</span> <span class="keyword">if</span> (entry.maintainState) &#123;</span><br><span class="line">        <span class="comment">// 如果 offstage 的 entry 有 maintainState 标记，加入到 offstageChildren 中</span></span><br><span class="line">        offstageChildren.add(TickerMode(enabled: <span class="keyword">false</span>, child: _OverlayEntry(entry)));</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> _Theatre(</span><br><span class="line">      onstage: Stack(</span><br><span class="line">        fit: StackFit.expand,</span><br><span class="line">        children: onstageChildren.reversed.toList(growable: <span class="keyword">false</span>),</span><br><span class="line">      ),</span><br><span class="line">      offstage: offstageChildren,</span><br><span class="line">    );</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到 <code>Overlay</code> 的 build 函数很简单，大致可以总结为以下流程：把一个栈 <code>_entries</code> 分为两批，一批是可视的（<em>onstage</em>），另一批是不可视的（<em>offstage</em>），其中不可视的 <em>entries</em> 只有标记了 <code>maintainState</code> 为 true 才会被加入到 <code>offstageChildren</code> 中（意思就是这一批需要保存状态，其余的全部销毁）。</p>
+<p><code>_Theatre</code> 是一个 <code>RenderObjectWidget</code>，它通过自定义 <code>RenderObject</code> 和 <code>Element</code> 实现了只渲染 <em>onstage</em> 中的 children，不渲染 <em>offstage</em> 中的 children，但是 <em>offstage</em> 中的 children 会走 build，也会保存状态（这里就解答了一开始的 3、4 问题了）。</p>
+<blockquote>
+<p>_Theatre 内部的解析这里不做介绍了，要仔细分析的话篇幅较多</p>
+</blockquote>
+<p>接下来我们来看下 <code>Navigator</code> 使用的 api <code>navigator.overlay?.insertAll(..)</code></p>
+<h3 id="3-在-Overlay-中插入浮层"><a href="#3-在-Overlay-中插入浮层" class="headerlink" title="3. 在 Overlay 中插入浮层"></a>3. 在 Overlay 中插入浮层</h3><p> 先来看下 <code>insertAll(..)</code> 的源码</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> insertAll(<span class="built_in">Iterable</span>&lt;OverlayEntry&gt; entries, &#123; OverlayEntry below, OverlayEntry above &#125;) &#123;</span><br><span class="line">  <span class="keyword">if</span> (entries.isEmpty)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  <span class="keyword">for</span> (OverlayEntry entry <span class="keyword">in</span> entries) &#123;</span><br><span class="line">    <span class="comment">// 当插入的 entry 内的 _overlay 都指向当前的 overlay</span></span><br><span class="line">    entry._overlay = <span class="keyword">this</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  setState(() &#123;</span><br><span class="line">    <span class="comment">// 根据 below 和 above，在 _entries 中适当的位置插入</span></span><br><span class="line">    _entries.insertAll(_insertionIndex(below, above), entries);</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到基本没什么代码，就是把 <em>entries</em> 插入到 <em>_entries</em>，然后 <code>setState(()&#123;&#125;)</code> 刷新下。</p>
+<p>所以，在 push 一个新的页面的时候，就会往 <em>Overlay</em> 中插入 <em>entries</em>，插入这个动作会触发 <em>Overlay</em> 的 <code>setState(()&#123;&#125;)</code>，导致 <em>Overlay</em> 会重新执行 build 函数。</p>
+<p>因为 <em>Overlay</em> rebuild 了，所以它下面所有的 child 都会 rebuild。</p>
+<p>如果这么想，<strong>你就大错特错了！！！</strong></p>
+<h3 id="4-解析页面的-build-时机"><a href="#4-解析页面的-build-时机" class="headerlink" title="4. 解析页面的 build 时机"></a>4. 解析页面的 build 时机</h3><blockquote>
+<p>正如我一开始说的第一、二个问题的答案：当 push 一个新的页面的时候，前一个页面 <strong>可能会</strong> rebuild！</p>
+</blockquote>
+<p>为什么这里是 <strong>可能会</strong> rebuild 呢？答案在 <em>Navigator</em>插入的那个 <em>OverlayEntry</em> 中：</p>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">ModalRoute</span>&lt;<span class="title">T</span>&gt; <span class="keyword">extends</span> <span class="title">TransitionRoute</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  <span class="built_in">Iterable</span>&lt;OverlayEntry&gt; createOverlayEntries() <span class="keyword">sync</span>* &#123;</span><br><span class="line">    <span class="keyword">yield</span> _modalBarrier = OverlayEntry(builder: _buildModalBarrier);</span><br><span class="line">    <span class="keyword">yield</span> OverlayEntry(builder: _buildModalScope, maintainState: maintainState);</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  Widget _buildModalScope(BuildContext context) &#123;</span><br><span class="line">    <span class="comment">// 关键代码，注意这里是 ??=</span></span><br><span class="line">    <span class="keyword">return</span> _modalScopeCache ??= _ModalScope&lt;T&gt;(</span><br><span class="line">      key: _scopeKey,</span><br><span class="line">      route: <span class="keyword">this</span>,</span><br><span class="line">    );</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里 <em>Navigator</em> 用了一个骚操作，<code>widgte ??= Widget() </code>。如果看过我之前那篇 <a href="/1599449233776/" title="谈谈 flutter 的 build">谈谈 flutter 的 build</a> ，应该知道在 <em>element.updateChild(..)</em> 的时候，如果新旧 <em>widget</em> 相等，那么是不会执行 <code>child.update(newWidget)</code>(也就是不会触发 <em>newWidget</em> 的 <em>rebuild()</em>) 。</p>
+<p>当时我看到这里以为这应该所有页面除了自身 <em>setState((){})</em> ，应该只会触发一次 <em>rebuild</em> 吧？结果打了我一耳光，测试的时候发现只要是 <code>StatelessWidget</code> 就不会触发 <em>rebuild</em>，<code>StatefulWiget</code> 就会触发 <em>rebuild</em>。</p>
+<p>那么那些会 <em>rebuild</em> 的 <em>widget</em> 是哪里触发的呢？是因为 <em>Overlay</em> 在新插入 <em>OverlayEntry</em> 的时候，会导致里面子组件的层级发生变化，也就是 <em>element.updateChild(..)</em> 里面其实是走到最后的 <code>inflateWidget(..)</code> ，然后 <code>OverlayEntry</code> 里面又有一个 <code>GlobalKey</code>（可以参阅前面的代码），在这 <strong>种种条件套娃下</strong>，最后会遍历整棵树的 <code>element.activate()</code>。</p>
+<p>最后 <code>StatefulElement</code> 重写了 <code>active()</code> 函数，在里面调用了 <code>markNeedsBuild()</code> ，所以 <code>StatefulWidget</code> 会 <em>rebuild</em>！</p>
+<blockquote>
+<p><strong>结论！！！：</strong> 上面分析来看，导致 build 的因素非常多，所以这里再次强调：<strong>随时考虑 build 函数会被调用</strong>。所以千万别在 <em>build()</em> 函数里面干耗时的事儿，尤其是动画阶段的 <em>build</em></p>
+</blockquote>
+<h2 id="结束语："><a href="#结束语：" class="headerlink" title="结束语："></a>结束语：</h2><ol>
+<li>前面说到 push 新页面的时候，<em>StatefulWidget</em> 会 rebuild，<em>StatelessWidget</em> 不会，那么我所有的根页面外面都套一层 <em>StatelessWidget</em> 是不是会减少 <em>build()</em> 函数调用的次数？</li>
+<li><em>Overlay</em> 中可以添加 <code>initEntries</code>，这部分 <em>OverlayEntry</em> 会在 <em>Overlay</em> 初始化的时候加入，请问下面用法有什么问题吗：</li>
+</ol>
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">OverlayTrap</span> <span class="keyword">extends</span> <span class="title">StatefulWidget</span> </span>&#123;</span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  _OverlayTrapState createState() =&gt; _OverlayTrapState();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">_OverlayTrapState</span> <span class="keyword">extends</span> <span class="title">State</span>&lt;<span class="title">OverlayTrap</span>&gt; </span>&#123;</span><br><span class="line">  <span class="built_in">int</span> _index = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  <span class="meta">@override</span></span><br><span class="line">  Widget build(BuildContext context) &#123;</span><br><span class="line">    Widget content = Text(<span class="string">&#x27;点我 +1: <span class="subst">$_index</span>&#x27;</span>);</span><br><span class="line"></span><br><span class="line">    Widget child = Overlay(</span><br><span class="line">      initialEntries: [</span><br><span class="line">        OverlayEntry(</span><br><span class="line">          builder: (context) &#123;</span><br><span class="line">            <span class="keyword">return</span> Center(</span><br><span class="line">              child: RaisedButton(</span><br><span class="line">                child: content,</span><br><span class="line">                onPressed: () &#123;</span><br><span class="line">                  setState(() &#123;</span><br><span class="line">                    _index++;</span><br><span class="line">                  &#125;);</span><br><span class="line">                &#125;,</span><br><span class="line">              ),</span><br><span class="line">            );</span><br><span class="line">          &#125;,</span><br><span class="line">          opaque: <span class="keyword">false</span>,</span><br><span class="line">        )</span><br><span class="line">      ],</span><br><span class="line">    );</span><br><span class="line"></span><br><span class="line">    child = Scaffold(</span><br><span class="line">      appBar: AppBar(</span><br><span class="line">        title: Text(<span class="string">&#x27;Overlay initEntries 的陷阱&#x27;</span>),</span><br><span class="line">      ),</span><br><span class="line">      body: child,</span><br><span class="line">    );</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> child;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>上面代码可以直接跑在 <a target="_blank" rel="noopener" href="https://codepen.io/voiddog/pen/ExKOyQW">code pen</a> 中</p>
+</blockquote>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Flutter/" rel="tag"># Flutter</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/1599449233776/" rel="prev" title="谈谈 Flutter 的 build">
+                  <i class="fa fa-chevron-left"></i> 谈谈 Flutter 的 build
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/1604312052257/" rel="next" title="Flutter 上的内存泄漏监控">
+                  Flutter 上的内存泄漏监控 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">VoidDog</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

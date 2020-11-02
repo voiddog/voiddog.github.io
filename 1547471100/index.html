@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"blog.voiddog.org","root":"/","scheme":"Pisces","version":"8.0.0-rc.5","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false};
+  </script>
+
+  <meta name="description" content="Flutter 入门介绍对于开发者而言，Flutter 是什么？他是用什么语言编写的？包含那几部分？是如何运行到设备上的？Flutter 工程和 Native 工程有何差别？支持热跟新吗？Flutter 界面是如何构建的… 这里对 Flutter 做一个大致方向的介绍，让你开始了解它">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Flutter入门介绍">
+<meta property="og:url" content="http://blog.voiddog.org/1547471100/index.html">
+<meta property="og:site_name" content="爆裂吧现实">
+<meta property="og:description" content="Flutter 入门介绍对于开发者而言，Flutter 是什么？他是用什么语言编写的？包含那几部分？是如何运行到设备上的？Flutter 工程和 Native 工程有何差别？支持热跟新吗？Flutter 界面是如何构建的… 这里对 Flutter 做一个大致方向的介绍，让你开始了解它">
+<meta property="og:locale">
+<meta property="og:image" content="https://i.imgur.com/iZxMBzb.png">
+<meta property="og:image" content="https://i.imgur.com/Hykwrh9.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/flutter/engine/master/docs/flutter_overview.svg?sanitize=true">
+<meta property="og:image" content="https://i.imgur.com/duZHCvJ.png">
+<meta property="og:image" content="https://i.imgur.com/DQ6Tfoh.png">
+<meta property="og:image" content="https://i.imgur.com/HKzKMtR.png">
+<meta property="article:published_time" content="2018-11-01T19:23:25.000Z">
+<meta property="article:modified_time" content="2020-11-02T10:15:43.957Z">
+<meta property="article:author" content="VoidDog">
+<meta property="article:tag" content="Flutter">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.imgur.com/iZxMBzb.png">
+
+
+<link rel="canonical" href="http://blog.voiddog.org/1547471100/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>Flutter入门介绍 | 爆裂吧现实</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175543622-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-175543622-1');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">爆裂吧现实</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">不想死就早点睡</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Flutter-%E5%85%A5%E9%97%A8%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.</span> <span class="nav-text">Flutter 入门介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Flutter-%E6%98%AF%E4%BB%80%E4%B9%88"><span class="nav-number">1.1.</span> <span class="nav-text">Flutter 是什么</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Dart-%E8%AF%AD%E8%A8%80%E7%AE%80%E4%BB%8B"><span class="nav-number">1.2.</span> <span class="nav-text">Dart 语言简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Flutter-%E6%9E%B6%E6%9E%84%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.3.</span> <span class="nav-text">Flutter 架构介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Flutter-%E5%B7%A5%E7%A8%8B%E7%BB%93%E6%9E%84"><span class="nav-number">1.4.</span> <span class="nav-text">Flutter 工程结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Flutter-%E6%A8%A1%E5%BC%8F"><span class="nav-number">1.5.</span> <span class="nav-text">Flutter 模式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Flutter-%E7%BC%96%E8%AF%91%E5%92%8C%E8%BF%90%E8%A1%8C%EF%BC%88Android%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">Flutter 编译和运行（Android）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Release-%E6%A8%A1%E5%BC%8F%E4%B8%8B%E7%9A%84%E7%BC%96%E8%AF%91"><span class="nav-number">1.6.1.</span> <span class="nav-text">Release 模式下的编译</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Debug-%E6%A8%A1%E5%BC%8F%E4%B8%8B%E7%9A%84%E7%BC%96%E8%AF%91"><span class="nav-number">1.6.2.</span> <span class="nav-text">Debug 模式下的编译</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Flutter-%E7%9A%84%E8%BF%90%E8%A1%8C"><span class="nav-number">1.6.3.</span> <span class="nav-text">Flutter 的运行</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Widget-%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.7.</span> <span class="nav-text">Widget  介绍</span></a></li></ol></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="VoidDog"
+      src="https://i.imgur.com/rO7BKq2.png">
+  <p class="site-author-name" itemprop="name">VoidDog</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/voiddog" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/qgx446738721" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;qgx446738721" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.facebook.com/voiddog" title="Facebook → https:&#x2F;&#x2F;www.facebook.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-facebook fa-fw"></i>Facebook</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/voiddog" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-instagram fa-fw"></i>Instagram</a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://blog.voiddog.org/1547471100/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://i.imgur.com/rO7BKq2.png">
+      <meta itemprop="name" content="VoidDog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爆裂吧现实">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Flutter入门介绍
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2018-11-01 19:23:25" itemprop="dateCreated datePublished" datetime="2018-11-01T19:23:25+00:00">2018-11-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-11-02 10:15:43" itemprop="dateModified" datetime="2020-11-02T10:15:43+00:00">2020-11-02</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Flutter/" itemprop="url" rel="index"><span itemprop="name">Flutter</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <h1 id="Flutter-入门介绍"><a href="#Flutter-入门介绍" class="headerlink" title="Flutter 入门介绍"></a>Flutter 入门介绍</h1><p>对于开发者而言，Flutter 是什么？他是用什么语言编写的？包含那几部分？是如何运行到设备上的？Flutter 工程和 Native 工程有何差别？支持热跟新吗？Flutter 界面是如何构建的…</p>
+<p>这里对 Flutter 做一个大致方向的介绍，让你开始了解它</p>
+<a id="more"></a>
+
+<h2 id="Flutter-是什么"><a href="#Flutter-是什么" class="headerlink" title="Flutter 是什么"></a>Flutter 是什么</h2><p>Flutter 是一个使用 <code>Dart</code> 语言开发的跨平台移动 UI 框架，通过自建的绘制引擎，能高性能，高保证地进行 Android 和 iOS 开发</p>
+<p>在 Flutter 出现之前，已经有了很多跨平台 UI 框架：React Native、Weex 等。但是 Weex 和 React Native 都存在两个问题：</p>
+<ol>
+<li>性能不如原生：主要开销耗费在 JSBridge 的沟通上</li>
+<li>平台相关性太强：框架最后生成的都是平台相关的控件，两端有差异，兼容性不佳，需要处理大量平台相关的逻辑</li>
+</ol>
+<p>Flutter 开辟了一种全新的方式，为了解决上面两个问题，Flutter <strong>从头到尾重写了一套跨平台的 UI 框架</strong>，包括 UI 控件，渲染逻辑甚至开发语言。渲染引擎依靠跨平台的<strong>Skia图形库</strong>来实现，依赖系统的只有图形绘制相关的接口，可以在最大程度上保证不同平台、不同设备的体验一致性，逻辑处理使用支持AOT的Dart语言，执行效率也比JavaScript高得多。</p>
+<p>Flutter 除了可以在 google 自家的 Android Studio 上开发，也可以在 VisualStudio Code 上开发</p>
+<h2 id="Dart-语言简介"><a href="#Dart-语言简介" class="headerlink" title="Dart 语言简介"></a>Dart 语言简介</h2><p><a target="_blank" rel="noopener" href="https://www.dartlang.org/">Dart</a> 是一种强类型、跨平台的客户端开发语言。具有专门为客户端优化、高生产力、快速高效、可移植（兼容ARM/x86）、易学的OO编程风格和原生支持响应式编程（Stream &amp; Future）等优秀特性。Dart 主要由 Google 负责开发和维护，在 2011 年 10 启动项目，2017 年 9 月发布第一个2.0-dev 版本</p>
+<p>Flutter 在筛选了 20 多种语言后，最终选择 Dart 作为开发语言主要有几个原因：</p>
+<ol>
+<li>健全的类型系统，同时支持静态类型检查和运行时类型检查。</li>
+<li>代码体积优化（Tree Shaking），编译时只保留运行时需要调用的代码（不允许反射这样的隐式引用），所以庞大的 Widgets 库不会造成发布体积过大。</li>
+<li>丰富的底层库，Dart 自身提供了非常多的库。</li>
+<li>多生代无锁垃圾回收器，专门为 UI 框架中常见的大量 Widgets 对象创建和销毁优化。</li>
+<li>跨平台，iOS 和 Android 共用一套代码。</li>
+<li>JIT &amp; AOT运行模式，支持开发时的快速迭代和正式发布后最大程度发挥硬件性能。</li>
+</ol>
+<p>在 Dart 中，有一些重要的基本概念需要了解：</p>
+<ul>
+<li>所有变量的值都是对象，也就是类的实例。甚至数字、函数和 <code>null</code> 也都是对象，都继承自 <code>Object</code> 类</li>
+<li>虽然 Dart 是强类型语言，但是显式变量类型声明是可选的，Dart 支持类型推断。如果不想使用类型推断，可以用 <code>dynamic</code> 类型</li>
+<li>Dart 支持泛型，<code>List&lt;int&gt;</code> 表示包含 <code>int</code> 类型的列表，<code>List&lt;dynamic&gt;</code> 则表示包含任意类型的列表，**(Dart 中不存在类型擦除现象)**</li>
+<li>Dart 支持顶层（top-level）函数和类成员函数，也支持嵌套函数和本地函数</li>
+<li>Dart 支持顶层变量和类成员变量</li>
+<li>Dart 没有 public、protected 和 private 这些关键字，使用下划线“_”开头的变量或者函数，表示只在库内可见。参考 <a target="_blank" rel="noopener" href="https://www.dartlang.org/guides/language/language-tour#libraries-and-visibility">库和可见性</a></li>
+</ul>
+<p>DartVM 的内存分配策略非常简单，创建对象时只需要在现有堆上移动指针，内存增长始终是线形的，省去了查找可用内存段的过程</p>
+<p><img src="https://i.imgur.com/iZxMBzb.png"></p>
+<p>Dart 中类似线程的概念叫做 Isolate，每个 Isolate 之间是无法共享内存的，所以这种分配策略可以让 Dart 实现无锁的快速分配</p>
+<blockquote>
+<p>关于 Isolate，在下文介绍 Flutter 编译产物的时候会解说</p>
+</blockquote>
+<p>Dart 的垃圾回收也采用了多生代算法，新生代在回收内存时采用了“半空间”算法，触发垃圾回收时 Dart 会将当前半空间中的“活跃”对象拷贝到备用空间，然后整体释放当前空间的所有内存：<br><img src="https://i.imgur.com/Hykwrh9.png"></p>
+<p>整个过程中 Dart 只需要操作少量的“活跃”对象，大量的没有引用的“死亡”对象则被忽略，这种算法也非常适合 Flutter 框架中大量 Widget 重建的场景</p>
+<blockquote>
+<p>Flutter 中的 Widget 是不可改变的，所以当内容发生变化需要重建</p>
+</blockquote>
+<h2 id="Flutter-架构介绍"><a href="#Flutter-架构介绍" class="headerlink" title="Flutter 架构介绍"></a>Flutter 架构介绍</h2><p><img src="https://raw.githubusercontent.com/flutter/engine/master/docs/flutter_overview.svg?sanitize=true"><br>Flutter 的架构主要分为三层：</p>
+<ul>
+<li><p><strong>Framework</strong>：使用 dart 实现，包括 Material Design 风格的Widget, Cupertino(针对iOS) 风格的 Widgets，文本/图片/按钮等基础 Widgets，渲染，动画，手势等</p>
+</li>
+<li><p><strong>Engine</strong>: 使用 C++ 实现，主要包括: Skia, Dart 和 Text。</p>
+<ul>
+<li><strong>Skia</strong> 是开源的二维图形库，提供了适用于多种软硬件平台的通用 API。其已作为 Google Chrome，Chrome OS，Android, Mozilla Firefox, Firefox OS 等其他众多产品的图形引擎</li>
+<li><strong>Dart</strong> 部分主要包括:Dart Runtime，Garbage Collection(GC)，如果是Debug模式的话，还包括JIT(Just In Time)支持。Release和Profile模式下，是AOT(Ahead Of Time)编译成了原生的arm代码，并不存在JIT部分。</li>
+<li><strong>Text</strong> 即文本渲染，其渲染层次如下:衍生自 minikin 的libtxt 库(用于字体选择，分隔行)；HartBuzz用于字形选择和成型； Skia 作为渲染/GPU后端，在 Android 和 Fuchsia 上使用FreeType 渲染，在 iOS 上使用 CoreGraphics 来渲染字体。</li>
+</ul>
+</li>
+<li><p><strong>Embedder</strong> 层是一个嵌入层，即把 Flutter 嵌入到各个平台上去，这里做的主要工作包括渲染 Surface 设置,线程设置，以及插件（这里的插件是指 Flutter 和 Native 交互通道）等。从这里可以看出，Flutter 的平台相关层很低，平台 (如 iOS) 只是提供一个画布，剩余的所有渲染相关的逻辑都在 Flutter 内部，这就使得它具有了很好的跨端一致性。</p>
+</li>
+</ul>
+<h2 id="Flutter-工程结构"><a href="#Flutter-工程结构" class="headerlink" title="Flutter 工程结构"></a>Flutter 工程结构</h2><p>这里用 flutter beta v0.8.2，以 hello_flutter 工程为例，Flutter 的工程目录结构如下:<br><img src="https://i.imgur.com/duZHCvJ.png"></p>
+<blockquote>
+<p><strong>lib</strong> 目录下面包含了当前工程 Flutter 的业务 dart 代码<br><strong>ios</strong> 和 <strong>android</strong> 就是标准的 native 开发工程<br><strong>pubspec.yaml</strong> 是pub依赖管理，用于管理 dart 依赖</p>
+</blockquote>
+<h2 id="Flutter-模式"><a href="#Flutter-模式" class="headerlink" title="Flutter 模式"></a>Flutter 模式</h2><p>对于 Flutter，它支持常见的 debug, release 模式，多了一个profile 模式，但它又有些不一样。</p>
+<p><strong>Debug 模式</strong>: 对应了 Dart 的 JIT 模式，又称检查模式或者慢速模式。支持设备，模拟器 (iOS/Android)，此模式下打开了断言，包括所有的调试信息。此模式为快速开发和运行做了优化，但并未对执行速度（页面达不到 60fps），包大小和部署做优化。Debug 模式下，编译使用 JIT 技术，支持广受欢迎的亚秒级有状态的 <strong>hot reload</strong>。</p>
+<p><strong>Release 模式</strong>: 对应了 Dart 的 AOT 模式，此模式目标即为部署到终端用户。只支持真机，不包括模拟器。关闭了所有断言，尽可能多地去掉了调试信息，关闭了所有调试工具。为快速启动，快速执行，包大小做了优化。禁止了所有调试辅助手段，服务扩展。</p>
+<p><strong>Profile 模式</strong>: 类似 Release 模式，只是多了对于 Profile 模式的服务扩展的支持，支持跟踪，以及最小化使用跟踪信息需要的依赖，例如，observatory可以连接上进程。Profile 并不支持模拟器的原因在于，模拟器上的诊断并不代表真实的性能。</p>
+<blockquote>
+<p>Profile同Release在编译原理等上无差异</p>
+</blockquote>
+<h2 id="Flutter-编译和运行（Android）"><a href="#Flutter-编译和运行（Android）" class="headerlink" title="Flutter 编译和运行（Android）"></a>Flutter 编译和运行（Android）</h2><h3 id="Release-模式下的编译"><a href="#Release-模式下的编译" class="headerlink" title="Release 模式下的编译"></a>Release 模式下的编译</h3><p><img src="https://i.imgur.com/DQ6Tfoh.png"><br>这里先介绍下 dart 编译出来的四个文件是啥, vm 开头的是虚拟机相关的，isolate 开头的对应我们应用的 dart 代码</p>
+<ul>
+<li><strong>vm_snapshot_data</strong>: 表示隔离区之间共享的 Dart 堆的初始状态，只读属性不可写。这里的隔离区就是指 <strong>isolate</strong>，isolate 在 dart 中起到线程的作用（dart 中没有线程的概念），和线程的区别在于：线程间是内存共享的，isolate 之间是内存不共享的，后续会解释一波 isolate</li>
+<li><strong>vm_snapshot_instr</strong>: 包含 VM 中所有 Dart 隔离区之间共享的常用的 AOT 指令</li>
+<li><strong>isolate_snapshot_data</strong>: 表示一个隔离区的 Dart 堆初始状态</li>
+<li><strong>isolate_snapshot_instr</strong>: 隔离区执行用的 AOT 代码</li>
+</ul>
+<p><strong>VM snapshot</strong> 可以被所有的 隔离区(isolate) 使用，所以 <strong>VM snaoshot</strong> 在 Dart VM 初始化的时候就加载好了</p>
+<p>关于隔离区(isolate)，这里附上我的理解：<strong>它是一个在隔离环境运行的程序，拥有自己的堆栈，自己的线程，一个隔离区的代码总是顺序执行的（理解为单线程）</strong>，所以 dart 里面没有线程这个东西，取而代之的是 <strong>isolate</strong>，<strong>isolate</strong> 之间内存不共享，隔离区之间通信方式是消息通信。</p>
+<blockquote>
+<p>因为隔离区之间内存不共享，所以这里有个很大的好处：<strong>无锁并发</strong>，dart 里面没有锁</p>
+</blockquote>
+<hr>
+<p><strong>flutter.jar</strong> 是 Engine 编译出来的，内部含有 <code>libflutter.so</code> , jar 里面还包含了 Embedder 部分的内容 （FlutterMain, FlutterView, FlutterNativeView）</p>
+<p>实际项目并不会编译，而是直接使用 flutter 仓库里面编译好的，位于 <code>/bin/cache/artifacts/engine/android*</code> 下</p>
+<hr>
+<p><strong>assets</strong> 中包含了 flutter 需要的资源文件，包括：图片，字体…</p>
+<hr>
+<p>最后打包成 apk 的时候，snapshot 文件和 assets 文件都会拷贝到 app 中的 assets 目录里面，so 文件放到 lib 下面：<br><img src="https://i.imgur.com/HKzKMtR.png"></p>
+<blockquote>
+<p>apk 新安装后，会根据一个判断逻辑（packageinfo 中的 versionCode 结合 lastUpdateTime）来决定是否拷贝 APK 中的 assets 到 app 的私有缓存目录</p>
+</blockquote>
+<hr>
+<h3 id="Debug-模式下的编译"><a href="#Debug-模式下的编译" class="headerlink" title="Debug 模式下的编译"></a>Debug 模式下的编译</h3><p>Debug 模式相比较于 Release 模式主要有两点不一样：</p>
+<ol>
+<li><strong>flutter.jar</strong>: 因为是 Debug，此模式下 jar 是有 JIT 支持的，Release 模式下没有 JIT 部分</li>
+<li><strong>没有了 xx_snapshot_instr 指令</strong>：指令中包含的是 AOT 指令，所以在 Debug 模式下这部分是没有的，取而代之的是一个 <code>kernel_blob.bin</code> 文件，这部分的 snapshot 是脚本快照，里面是简单的标记化的源代码。所有的注释，空白字符都被移除，常量也被规范化，没有机器码</li>
+</ol>
+<hr>
+<h3 id="Flutter-的运行"><a href="#Flutter-的运行" class="headerlink" title="Flutter 的运行"></a>Flutter 的运行</h3><p>在 Android 上，Flutter 的布局是显示在一个 <code>FlutterView</code> 上面的，<code>FlutterView</code> 是一个 <code>SurfaceView</code>，对于 Flutter 而言，它只是个画布（这也是为什么 Flutter 平台无关性很强）</p>
+<p>Flutter app 是由 Widget 组成的</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Everthing&#39;s a Widget (image, layout, gesture...)</span><br></pre></td></tr></table></figure>
+<p>我们用 dart 写页面其实就是写 Widget</p>
+<blockquote>
+<p>Widget 不等于 View，他是轻量级的，而且不是可编辑的，一旦创建了就不变了</p>
+</blockquote>
+<p>最后 Flutter 把当前页面的 Widget 转换成 RenderObject 树，RendObject 才是真正绘制在屏幕上的对象</p>
+<h2 id="Widget-介绍"><a href="#Widget-介绍" class="headerlink" title="Widget  介绍"></a>Widget  介绍</h2><p>关于 Wdiget 的介绍闲鱼出过一片很好的入门文章 <a target="_blank" rel="noopener" href="https://juejin.im/post/5b8ce76f51882542c0626887">Flutter快速上车之Widget</a>，可以通过这篇文章了解 flutter 的 Widget</p>
+<p>参考文章：<br><a target="_blank" rel="noopener" href="https://juejin.im/post/5b6d59476fb9a04fe91aa778">Flutter原理与美团的实践</a><br><a target="_blank" rel="noopener" href="https://juejin.im/post/5b8ce76f51882542c0626887">Flutter快速上车之Widget</a><br><a target="_blank" rel="noopener" href="https://mp.weixin.qq.com/s/vlHt8jxbdzBqJZDobpsFVw">深入理解 Flutter 的编译原理与优化</a><br><a target="_blank" rel="noopener" href="https://github.com/flutter/engine/wiki">Flutter Engine Wiki</a><br><a target="_blank" rel="noopener" href="https://github.com/flutter/engine/wiki/Flutter-Engine-Operation-in-AOT-Mode">Flutter Engine Operation in AOT Mode</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Flutter/" rel="tag"># Flutter</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/1547471696/" rel="prev" title="探索阻尼动画优雅的实现方式">
+                  <i class="fa fa-chevron-left"></i> 探索阻尼动画优雅的实现方式
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/1547471796/" rel="next" title="插件化的版本一致性问题">
+                  插件化的版本一致性问题 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">VoidDog</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

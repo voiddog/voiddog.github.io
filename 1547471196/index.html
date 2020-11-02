@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"blog.voiddog.org","root":"/","scheme":"Pisces","version":"8.0.0-rc.5","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false};
+  </script>
+
+  <meta name="description" content="此文章紧接事件分发机制源码解析（一），建议顺序翻阅。  当正在分发事件的时候（_inDispath &gt; 0），添加和删除监听器事件EventDispatcher 中有表示当前分发的事件数的私有成员变量 _inDispatch ，它是一个 int 类型的数据，用于表示当前正有多少事件正在分发。既然是表示事件正在分发的数量，可定有 ++, –  的操作，在DispatchEvent中会有+1和">
+<meta property="og:type" content="article">
+<meta property="og:title" content="事件分发机制源码解析（二）">
+<meta property="og:url" content="http://blog.voiddog.org/1547471196/index.html">
+<meta property="og:site_name" content="爆裂吧现实">
+<meta property="og:description" content="此文章紧接事件分发机制源码解析（一），建议顺序翻阅。  当正在分发事件的时候（_inDispath &gt; 0），添加和删除监听器事件EventDispatcher 中有表示当前分发的事件数的私有成员变量 _inDispatch ，它是一个 int 类型的数据，用于表示当前正有多少事件正在分发。既然是表示事件正在分发的数量，可定有 ++, –  的操作，在DispatchEvent中会有+1和">
+<meta property="og:locale">
+<meta property="article:published_time" content="2016-07-31T10:39:10.000Z">
+<meta property="article:modified_time" content="2020-11-02T10:15:43.957Z">
+<meta property="article:author" content="VoidDog">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="http://blog.voiddog.org/1547471196/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>事件分发机制源码解析（二） | 爆裂吧现实</title>
+  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175543622-1"></script>
+    <script>
+      if (CONFIG.hostname === location.hostname) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-175543622-1');
+      }
+    </script>
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">爆裂吧现实</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">不想死就早点睡</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%BD%93%E6%AD%A3%E5%9C%A8%E5%88%86%E5%8F%91%E4%BA%8B%E4%BB%B6%E7%9A%84%E6%97%B6%E5%80%99%EF%BC%88-inDispath-gt-0%EF%BC%89%EF%BC%8C%E6%B7%BB%E5%8A%A0%E5%92%8C%E5%88%A0%E9%99%A4%E7%9B%91%E5%90%AC%E5%99%A8%E4%BA%8B%E4%BB%B6"><span class="nav-number">1.</span> <span class="nav-text">当正在分发事件的时候（_inDispath &gt; 0），添加和删除监听器事件</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Cocos-Bug-%E4%B9%8B-DirtyFlag"><span class="nav-number"></span> <span class="nav-text">Cocos Bug 之 DirtyFlag</span></a></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="VoidDog"
+      src="https://i.imgur.com/rO7BKq2.png">
+  <p class="site-author-name" itemprop="name">VoidDog</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/voiddog" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/qgx446738721" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;qgx446738721" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.facebook.com/voiddog" title="Facebook → https:&#x2F;&#x2F;www.facebook.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-facebook fa-fw"></i>Facebook</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://instagram.com/voiddog" title="Instagram → https:&#x2F;&#x2F;instagram.com&#x2F;voiddog" rel="noopener" target="_blank"><i class="fab fa-instagram fa-fw"></i>Instagram</a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+      
+
+      
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="http://blog.voiddog.org/1547471196/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://i.imgur.com/rO7BKq2.png">
+      <meta itemprop="name" content="VoidDog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爆裂吧现实">
+    </span>
+
+    
+    
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          事件分发机制源码解析（二）
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2016-07-31 10:39:10" itemprop="dateCreated datePublished" datetime="2016-07-31T10:39:10+00:00">2016-07-31</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2020-11-02 10:15:43" itemprop="dateModified" datetime="2020-11-02T10:15:43+00:00">2020-11-02</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <blockquote>
+<p>此文章紧接<a href="/1547471102/" title="事件分发机制源码解析（一）">事件分发机制源码解析（一）</a>，建议顺序翻阅。</p>
+</blockquote>
+<h4 id="当正在分发事件的时候（-inDispath-gt-0），添加和删除监听器事件"><a href="#当正在分发事件的时候（-inDispath-gt-0），添加和删除监听器事件" class="headerlink" title="当正在分发事件的时候（_inDispath &gt; 0），添加和删除监听器事件"></a>当正在分发事件的时候（_inDispath &gt; 0），添加和删除监听器事件</h4><p><code>EventDispatcher</code> 中有表示当前分发的事件数的私有成员变量 <code>_inDispatch</code> ，它是一个 <code>int</code> 类型的数据，用于表示当前正有多少事件正在分发。既然是表示事件正在分发的数量，可定有 <em>++, –</em>  的操作，在<code>DispatchEvent</code>中会有+1和-1的操作，但是藏得比较深，怎么个深法，看下述源码。
+ </p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventDispatcher::dispatchEvent</span><span class="params">(Event* event)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    ...</span><br><span class="line"> </span><br><span class="line">    <span class="function">DispatchGuard <span class="title">guard</span><span class="params">(_inDispatch)</span></span>;</span><br><span class="line"> </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> <br>我去，这啥都都没有啊？？？发现这里面只有使用 <code>_inDispatch</code> 创建了一个变量，并没有++，- -操作。其实 <code>DispatchGuard</code> 这个类的构造函数的参数是一个 <code>int</code> 类型的引用，构造时候对其+1，析构函数的时候会-1操作。用法很妙，借助了局部变量是在栈里面这个特性，当方法<code>DispatchEvent</code>结束的时候，局部变量guard会析构，此时会-1操作。下面是 <code>DispatchGuard</code> 的源码。
+ </p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">DispatchGuard</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    DispatchGuard(<span class="keyword">int</span>&amp; count):</span><br><span class="line">            _count(count)</span><br><span class="line">    &#123;</span><br><span class="line">        ++_count;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    ~DispatchGuard()</span><br><span class="line">    &#123;</span><br><span class="line">        --_count;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="keyword">int</span>&amp; _count;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<a id="more"></a>
+
+<p>了解了<code>_inDispatch</code>的意义，我们来看看添加事件监听器和删除事件监听器的时候，如果正在分发事件（<code>_inDispatch &gt; 0</code>）会怎么处理。
+ </p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventDispatcher::addEventListener</span><span class="params">(EventListener* listener)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (_inDispatch == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        forceAddEventListener(listener);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">        _toAddedListeners.push_back(listener);</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    listener-&gt;retain();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> <br>上述代码是监听器添加的时候的代码，可以看到如果当时正在分发事件，会把当前需要添加的监听器添加到待添加向量（<code>_toAddedListeners</code>）中，那么也就是说在事件分发完毕之后监听器需要从<code>toAddedListeners</code>中转移到正式向量中，这部分代码可以在<code>updateListeners</code>中看到，此方法会在事件分发结束之后调用。
+ </p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventDispatcher::updateListeners</span><span class="params">(Event* event)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    CCASSERT(_inDispatch &gt; <span class="number">0</span>, <span class="string">&quot;If program goes here, there should be event in dispatch.&quot;</span>);</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">if</span> (_inDispatch &gt; <span class="number">1</span>)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"> </span><br><span class="line">    ...</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">if</span> (!_toAddedListeners.empty())</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; listener : _toAddedListeners)</span><br><span class="line">        &#123;</span><br><span class="line">            forceAddEventListener(listener);</span><br><span class="line">        &#125;</span><br><span class="line">        _toAddedListeners.clear();</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">if</span> (!_toRemovedListeners.empty())</span><br><span class="line">    &#123;</span><br><span class="line">        cleanToRemovedListeners();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> <br>代码中，除了添加事件监听器有个待加入向量外，删除事件监听器也有一个待删除向量（不过这个好像是废话），开头有判断当前是否还是处于事件分发中。
+ </p>
+<h3 id="Cocos-Bug-之-DirtyFlag"><a href="#Cocos-Bug-之-DirtyFlag" class="headerlink" title="Cocos Bug 之 DirtyFlag"></a>Cocos Bug 之 DirtyFlag</h3><p>上面的代码中，我删了一些代码，因为代码太多影响阅读。其中就有很多涉及到了<strong>Dirty Flag</strong>，望文取义的话是脏标记，问题是这个脏是什么脏？</p>
+<p>下面来看一下添加监听器和移除监听器的代码部分。
+ </p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 添加监听器</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventDispatcher::forceAddEventListener</span><span class="params">(EventListener* listener)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    EventListenerVector* listeners = <span class="literal">nullptr</span>;</span><br><span class="line">    ...</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">if</span> (listener-&gt;getFixedPriority() == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        setDirty(listenerID, DirtyFlag::SCENE_GRAPH_PRIORITY);</span><br><span class="line"> </span><br><span class="line">        ...</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">        setDirty(listenerID, DirtyFlag::FIXED_PRIORITY);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"> <span class="comment">// 移除监听器</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventDispatcher::removeEventListener</span><span class="params">(EventListener* listener)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    ...</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span> iter = _listenerMap.begin(); iter != _listenerMap.end();)</span><br><span class="line">    &#123;</span><br><span class="line">        ...</span><br><span class="line"> </span><br><span class="line">        removeListenerInVector(sceneGraphPriorityListeners);</span><br><span class="line">        <span class="keyword">if</span> (isFound)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">// fixed #4160: Dirty flag need to be updated after listeners were removed.</span></span><br><span class="line">            setDirty(listener-&gt;getListenerID(), DirtyFlag::SCENE_GRAPH_PRIORITY);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">            removeListenerInVector(fixedPriorityListeners);</span><br><span class="line">            <span class="keyword">if</span> (isFound)</span><br><span class="line">            &#123;</span><br><span class="line">                setDirty(listener-&gt;getListenerID(), DirtyFlag::FIXED_PRIORITY);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> <br>代码中可以看到，这个 <em>DirtyFlag</em> 是设置给 <code>ListenerID</code> 的，每当新添加一个 <code>Listener</code>，或则删除一个 <code>Listener</code> 的时候，就会给当前 <code>Listener</code> 的 <code>ListenerID</code> 添加一个 <em>DirtyFlag</em>。说明这个脏是指 <code>ListenerID</code> 对应的监听器向量列表需要重新排序了，如果不脏就不需要排序。</p>
+<p><strong>那么问题来了：</strong><br>照理只要出现了删除，修改，添加监听器的时候，监听器列表需要重新排序，都需要设置相应的 <em>DirtyFlag</em> 操作。但是 <strong>Cocos-2dx v3.10</strong> 里面的 <code>updateListeners</code> 函数有删除监听器的操作，然而并没有设置相应的 <em>DirtyFlag</em> 操作。此问题我在 Cocos2dx github 的 <strong>issues</strong>中有回答<a target="_blank" rel="noopener" href="https://github.com/cocos2d/cocos2d-x/issues/11476">问题链接</a></p>
+<p>这个就是一个 <strong>Bug</strong> 了，放着不管会抛出以下异常
+ </p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CCASSERT(listeners-&gt;getGt0Index() &lt;= <span class="keyword">static_cast</span>&lt;<span class="keyword">ssize_t</span>&gt;(fixedPriorityListeners-&gt;size()), <span class="string">&quot;Out of range exception!&quot;</span>);</span><br></pre></td></tr></table></figure>
+<p> <br>代码中的 <code>Gt0Index()</code> 方法其实就是获取到当前监听器里诶包中 <em>fixedPriority == 0</em> 的监听器在监听器向量中的位置，它只有在给 <code>Listener</code> 排序的时候会设置，但是如果更新了对应 <code>ListenerID</code> 的向量（<code>EventListenerVector</code>），但是没有重新排序，就会出现 <code>_gt0Index</code> 未及时更新的情况，导致抛出这个异常。<br>排序的时候，会判断排序的这个 <code>ListenerID</code> 是否处于<code>Dirty</code>的状态，只有脏状态才会排序，这算优化吧，所以必须在 <code>updateListener</code> 的时候加上 <em>DirtyFlag</em>。<br> <br><strong>Bug 修复</strong></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventDispatcher::updateListeners</span><span class="params">(Event* event)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">   ...</span><br><span class="line"> </span><br><span class="line">    <span class="keyword">auto</span> onUpdateListeners = [<span class="keyword">this</span>](<span class="keyword">const</span> EventListener::ListenerID&amp; listenerID)</span><br><span class="line">    &#123;</span><br><span class="line">        ...</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">if</span> (sceneGraphPriorityListeners)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">auto</span> iter = sceneGraphPriorityListeners-&gt;begin(); iter != sceneGraphPriorityListeners-&gt;end();)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">auto</span> l = *iter;</span><br><span class="line">                <span class="keyword">if</span> (!l-&gt;isRegistered())</span><br><span class="line">                &#123;</span><br><span class="line">                    ...</span><br><span class="line">                    <span class="comment">// if item in toRemove list, remove it from the list</span></span><br><span class="line">                    setDirty(l-&gt;getListenerID(), DirtyFlag::SCENE_GRAPH_PRIORITY);</span><br><span class="line">                    ..</span><br><span class="line">                &#125;</span><br><span class="line">                ...</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        <span class="keyword">if</span> (fixedPriorityListeners)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">auto</span> iter = fixedPriorityListeners-&gt;begin(); iter != fixedPriorityListeners-&gt;end();)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">auto</span> l = *iter;</span><br><span class="line">                <span class="keyword">if</span> (!l-&gt;isRegistered())</span><br><span class="line">                &#123;</span><br><span class="line">                    ...</span><br><span class="line">                    <span class="comment">// if item in toRemove list, remove it from the list</span></span><br><span class="line">                    setDirty(l-&gt;getListenerID(), DirtyFlag::FIXED_PRIORITY);</span><br><span class="line">                    ...</span><br><span class="line">                &#125;</span><br><span class="line">                ...</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"> </span><br><span class="line">        ...</span><br><span class="line">    &#125;;</span><br><span class="line"> </span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> </p>
+<blockquote>
+<p>PS: 场景切换的时候 <code>EventDispatcher</code> 会设置成 <code>_isEnabled = false;</code> 这时候分发自定义事件是无效的。</p>
+</blockquote>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/1547471102/" rel="prev" title="事件分发机制源码解析（一）">
+                  <i class="fa fa-chevron-left"></i> 事件分发机制源码解析（一）
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/1547471097/" rel="next" title="Android高仿Chrome侧滑返回效果">
+                  Android高仿Chrome侧滑返回效果 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+      
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      
+
+      
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">VoidDog</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.0/lib/anime.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
